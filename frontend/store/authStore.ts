@@ -12,6 +12,7 @@ interface AuthState {
   isSuperUser: boolean;
   isLoading: boolean;
   error: string | null;
+  hasHydrated: boolean; // Track if store has loaded from localStorage
 
   // Actions
   setUser: (user: User) => void;
@@ -22,6 +23,7 @@ interface AuthState {
   login: (user: User, token: string) => void;
   logout: () => void;
   clearError: () => void;
+  setHasHydrated: (hasHydrated: boolean) => void;
 }
 
 /**
@@ -38,6 +40,7 @@ export const useAuthStore = create<AuthState>()(
       isSuperUser: false,
       isLoading: false,
       error: null,
+      hasHydrated: false,
 
       /**
        * Set current user
@@ -94,6 +97,7 @@ export const useAuthStore = create<AuthState>()(
           user,
           token,
           isAuthenticated: true,
+          hasHydrated: true, // Mark as hydrated since we're setting state manually
           error: null,
         });
 
@@ -128,6 +132,13 @@ export const useAuthStore = create<AuthState>()(
       clearError: () => {
         set({ error: null });
       },
+
+      /**
+       * Mark store as hydrated from localStorage
+       */
+      setHasHydrated: (hasHydrated: boolean) => {
+        set({ hasHydrated });
+      },
     }),
     {
       name: 'auth-storage', // localStorage key
@@ -138,6 +149,15 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated,
         isSuperUser: state.isSuperUser,
       }),
+      onRehydrateStorage: () => (state) => {
+        // Mark as hydrated once localStorage data is loaded
+        state?.setHasHydrated(true);
+        
+        // Reconnect Socket.io if token exists
+        if (state?.token) {
+          socketService.connect(state.token);
+        }
+      },
     }
   )
 );
