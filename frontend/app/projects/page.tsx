@@ -5,12 +5,11 @@ import { useRouter } from "next/navigation";
 import { useProjectStore } from "@/store/projectStore";
 import { useAuthStore } from "@/store/authStore";
 import { AppLayout } from "@/components/layout/app-layout";
-import { HoverEffect } from "@/components/ui/hover-effect";
+import { ProjectCard } from "@/components/projects/project-card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import { CreateProjectModal } from "@/components/projects/create-project-modal";
-import { SuperUserToggle } from "@/components/auth/super-user-toggle";
 import { Plus } from "lucide-react";
 
 /**
@@ -21,35 +20,22 @@ import { Plus } from "lucide-react";
 export default function ProjectsPage() {
   const router = useRouter();
   const { projects, isLoading, fetchProjects } = useProjectStore();
-  const { user, isSuperUser } = useAuthStore();
+  const { user } = useAuthStore();
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // Fetch projects on mount
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
 
-  /**
-   * Navigate to project board
-   */
-  const handleProjectClick = (projectId: string) => {
-    router.push(`/projects/${projectId}`);
-  };
-
-  // Format projects for HoverEffect component
-  const projectItems = projects.map((project) => ({
-    title: project.name,
-    description: project.description || "No description provided",
-    link: `/projects/${project.id}`,
-  }));
-
   return (
     <AppLayout>
       <div className="min-h-screen p-8">
         {/* Header */}
         <div className="max-w-7xl mx-auto mb-12">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-8 mr-0 md:mr-44">
             <div>
               <TextGenerateEffect
                 words="Your Projects"
@@ -59,16 +45,13 @@ export default function ProjectsPage() {
                 Welcome back, {user?.email}!
               </p>
             </div>
-            <div className="flex items-center gap-4">
-              <SuperUserToggle />
-              <Button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-5 w-5" />
-                New Project
-              </Button>
-            </div>
+            <Button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-5 w-5" />
+              New Project
+            </Button>
           </div>
 
           {/* Projects grid */}
@@ -91,7 +74,18 @@ export default function ProjectsPage() {
               </Button>
             </div>
           ) : (
-            <HoverEffect items={projectItems} />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 py-10">
+              {projects.map((project, idx) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  index={idx}
+                  hoveredIndex={hoveredIndex}
+                  onMouseEnter={() => setHoveredIndex(idx)}
+                  onMouseLeave={() => setHoveredIndex(null)}
+                />
+              ))}
+            </div>
           )}
         </div>
 

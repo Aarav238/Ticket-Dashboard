@@ -6,6 +6,7 @@ import { useTicketStore } from "@/store/ticketStore";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip } from "@/components/ui/tooltip";
 import { TicketPriority, TicketType } from "@/types";
 import { getUsers } from "@/lib/api";
 import { X } from "lucide-react";
@@ -136,13 +137,15 @@ export function CreateTicketModal({
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                 Create New Ticket
               </h2>
-              <button
-                onClick={handleClose}
-                disabled={isLoading}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg disabled:opacity-50"
-              >
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
+              <Tooltip content="Close" position="left">
+                <button
+                  onClick={handleClose}
+                  disabled={isLoading}
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg disabled:opacity-50 cursor-pointer"
+                >
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </Tooltip>
             </div>
 
             {/* Form */}
@@ -184,7 +187,7 @@ export function CreateTicketModal({
                     Type
                   </label>
                   <select
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer disabled:cursor-not-allowed"
                     value={type}
                     onChange={(e) => setType(e.target.value as TicketType)}
                     disabled={isLoading}
@@ -201,7 +204,7 @@ export function CreateTicketModal({
                     Priority
                   </label>
                   <select
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer disabled:cursor-not-allowed"
                     value={priority}
                     onChange={(e) =>
                       setPriority(e.target.value as TicketPriority)
@@ -222,7 +225,7 @@ export function CreateTicketModal({
                     Assign To
                   </label>
                   <select
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer disabled:cursor-not-allowed"
                     value={assignedTo}
                     onChange={(e) => setAssignedTo(e.target.value)}
                     disabled={isLoading}

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useProjectStore } from "@/store/projectStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip } from "@/components/ui/tooltip";
 import { X } from "lucide-react";
 
 /**
@@ -91,13 +92,15 @@ export function CreateProjectModal({
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                 Create New Project
               </h2>
-              <button
-                onClick={handleClose}
-                disabled={isLoading}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg disabled:opacity-50"
-              >
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
+              <Tooltip content="Close" position="left">
+                <button
+                  onClick={handleClose}
+                  disabled={isLoading}
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg disabled:opacity-50 cursor-pointer"
+                >
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </Tooltip>
             </div>
 
             {/* Form */}

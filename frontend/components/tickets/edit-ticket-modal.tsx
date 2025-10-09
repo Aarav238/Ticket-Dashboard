@@ -6,6 +6,7 @@ import { useTicketStore } from "@/store/ticketStore";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip } from "@/components/ui/tooltip";
 import { Ticket, TicketPriority, TicketType, TicketStatus } from "@/types";
 import { getUsers } from "@/lib/api";
 import { X, Trash2 } from "lucide-react";
@@ -161,21 +162,25 @@ export function EditTicketModal({
               </div>
               <div className="flex items-center gap-2">
                 {isSuperUser && (
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    disabled={isLoading}
-                    className="p-2 hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 rounded-lg disabled:opacity-50"
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </button>
+                  <Tooltip content="Delete Ticket" position="bottom">
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      disabled={isLoading}
+                      className="p-2 hover:bg-red-100 dark:hover:bg-red-900/20 text-red-600 rounded-lg disabled:opacity-50 cursor-pointer"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  </Tooltip>
                 )}
-                <button
-                  onClick={handleClose}
-                  disabled={isLoading}
-                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg disabled:opacity-50"
-                >
-                  <X className="h-5 w-5 text-gray-500" />
-                </button>
+                <Tooltip content="Close" position="left">
+                  <button
+                    onClick={handleClose}
+                    disabled={isLoading}
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg disabled:opacity-50 cursor-pointer"
+                  >
+                    <X className="h-5 w-5 text-gray-500" />
+                  </button>
+                </Tooltip>
               </div>
             </div>
 
@@ -244,7 +249,7 @@ export function EditTicketModal({
                     Status
                   </label>
                   <select
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer disabled:cursor-not-allowed"
                     value={status}
                     onChange={(e) => setStatus(e.target.value as TicketStatus)}
                     disabled={isLoading}
@@ -260,7 +265,7 @@ export function EditTicketModal({
                     Type
                   </label>
                   <select
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer disabled:cursor-not-allowed"
                     value={type}
                     onChange={(e) => setType(e.target.value as TicketType)}
                     disabled={isLoading}
@@ -278,7 +283,7 @@ export function EditTicketModal({
                   Priority
                 </label>
                 <select
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer disabled:cursor-not-allowed"
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as TicketPriority)}
                   disabled={isLoading}
@@ -296,7 +301,7 @@ export function EditTicketModal({
                     Assign To
                   </label>
                   <select
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer disabled:cursor-not-allowed"
                     value={assignedTo}
                     onChange={(e) => setAssignedTo(e.target.value)}
                     disabled={isLoading}
@@ -314,7 +319,9 @@ export function EditTicketModal({
               {/* Metadata */}
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                 <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                  <p>Created by: {ticket.creator_email || "Unknown"}</p>
+                  {isSuperUser && (
+                    <p>Created by: {ticket.creator_email || "Unknown"}</p>
+                  )}
                   <p>Created at: {new Date(ticket.created_at).toLocaleString()}</p>
                   <p>Updated at: {new Date(ticket.updated_at).toLocaleString()}</p>
                 </div>
