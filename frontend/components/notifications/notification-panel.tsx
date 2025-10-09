@@ -6,6 +6,7 @@ import { useNotificationStore } from "@/store/notificationStore";
 import { socketService } from "@/lib/socket";
 import { X, Bell, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 
 /**
  * Notification Panel Component
@@ -73,17 +74,19 @@ export function NotificationPanel() {
   return (
     <>
       {/* Notification button */}
-      <button
-        onClick={togglePanel}
-        className="fixed top-4 left-4 z-50 p-3 bg-white dark:bg-gray-900 rounded-full shadow-lg border border-gray-200 dark:border-gray-800 hover:scale-105 transition-transform"
-      >
-        <Bell className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-600 text-white text-xs rounded-full flex items-center justify-center font-semibold">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
-        )}
-      </button>
+      <Tooltip content={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`} position="right">
+        <button
+          onClick={togglePanel}
+          className="fixed top-4 left-4 z-50 p-3 bg-white dark:bg-gray-900 rounded-full shadow-lg border border-gray-200 dark:border-gray-800 hover:scale-105 transition-transform cursor-pointer"
+        >
+          <Bell className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-600 text-white text-xs rounded-full flex items-center justify-center font-semibold">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </button>
+      </Tooltip>
 
       {/* Notification panel */}
       <AnimatePresence>
@@ -136,12 +139,14 @@ export function NotificationPanel() {
                       </Button>
                     </>
                   )}
-                  <button
-                    onClick={togglePanel}
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
-                  >
-                    <X className="h-5 w-5 text-gray-500" />
-                  </button>
+                  <Tooltip content="Close" position="left">
+                    <button
+                      onClick={togglePanel}
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer"
+                    >
+                      <X className="h-5 w-5 text-gray-500" />
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
 
@@ -176,12 +181,14 @@ export function NotificationPanel() {
                               {formatTime(notification.created_at)}
                             </p>
                           </div>
-                          <button
-                            onClick={() => removeNotification(notification.id)}
-                            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg"
-                          >
-                            <X className="h-4 w-4 text-gray-400" />
-                          </button>
+                          <Tooltip content="Dismiss" position="left">
+                            <button
+                              onClick={() => removeNotification(notification.id)}
+                              className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg cursor-pointer"
+                            >
+                              <X className="h-4 w-4 text-gray-400" />
+                            </button>
+                          </Tooltip>
                         </div>
                       </motion.div>
                     ))}
