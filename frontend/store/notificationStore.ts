@@ -35,14 +35,6 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       notifications: [notification, ...state.notifications],
       unreadCount: state.unreadCount + 1,
     }));
-
-    // Optional: Auto-remove notification after 10 seconds
-    setTimeout(() => {
-      const currentNotifications = get().notifications;
-      if (currentNotifications.find((n) => n.id === notification.id)) {
-        get().removeNotification(notification.id);
-      }
-    }, 10000);
   },
 
   /**
@@ -74,7 +66,11 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
    * Mark all notifications as read
    */
   markAsRead: () => {
-    set({ unreadCount: 0 });
+    set((state) => ({
+      unreadCount: 0,
+      // Keep notifications but mark them as read
+      notifications: state.notifications.map(n => ({ ...n, read: true })),
+    }));
   },
 
   /**
@@ -87,6 +83,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       return {
         isOpen: newIsOpen,
         unreadCount: newIsOpen ? 0 : state.unreadCount,
+        notifications: newIsOpen 
+          ? state.notifications.map(n => ({ ...n, read: true }))
+          : state.notifications,
       };
     });
   },
@@ -95,7 +94,11 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
    * Open notification panel
    */
   openPanel: () => {
-    set({ isOpen: true, unreadCount: 0 });
+    set((state) => ({
+      isOpen: true,
+      unreadCount: 0,
+      notifications: state.notifications.map(n => ({ ...n, read: true })),
+    }));
   },
 
   /**
