@@ -118,7 +118,8 @@ export const verifySuperUser = async (req: Request, res: Response): Promise<void
     const isValid = password === superUserPassword;
 
     if (!isValid) {
-      res.status(401).json({
+      // Use 403 Forbidden instead of 401 to avoid triggering auth interceptor
+      res.status(403).json({
         success: false,
         message: MESSAGES.SUPER_USER_INVALID,
       });
