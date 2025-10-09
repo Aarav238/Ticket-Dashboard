@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useAuthStore } from "@/store/authStore";
 import { Ticket, TicketPriority, TicketType } from "@/types";
 import { EditTicketModal } from "./edit-ticket-modal";
 import { 
@@ -25,6 +26,7 @@ interface TicketCardProps {
 
 export function TicketCard({ ticket, isDragging = false }: TicketCardProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const { isSuperUser } = useAuthStore();
 
   const {
     attributes,
@@ -125,20 +127,24 @@ export function TicketCard({ ticket, isDragging = false }: TicketCardProps) {
 
         {/* Footer */}
         <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-          <div className="flex items-center gap-2">
-            {ticket.assignee_email ? (
-              <div className="flex items-center gap-1">
-                <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-300 font-medium">
-                  {ticket.assignee_email.charAt(0).toUpperCase()}
+          {isSuperUser ? (
+            <div className="flex items-center gap-2">
+              {ticket.assignee_email ? (
+                <div className="flex items-center gap-1">
+                  <div className="h-6 w-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-700 dark:text-blue-300 font-medium">
+                    {ticket.assignee_email.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="truncate max-w-[100px]">
+                    {ticket.assignee_email}
+                  </span>
                 </div>
-                <span className="truncate max-w-[100px]">
-                  {ticket.assignee_email}
-                </span>
-              </div>
-            ) : (
-              <span className="text-gray-400 dark:text-gray-600">Unassigned</span>
-            )}
-          </div>
+              ) : (
+                <span className="text-gray-400 dark:text-gray-600">Unassigned</span>
+              )}
+            </div>
+          ) : (
+            <div />
+          )}
           <span>#{ticket.id.slice(0, 8)}</span>
         </div>
       </div>
