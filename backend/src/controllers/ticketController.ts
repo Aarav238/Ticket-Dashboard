@@ -54,6 +54,28 @@ export const createTicket = async (req: Request, res: Response): Promise<void> =
       ticket.id
     );
 
+    // Emit Socket.io events for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      // Emit to project room for real-time board updates
+      io.to(`project:${ticket.project_id}`).emit('ticket-created', ticket);
+      
+      // Send notification to all OTHER users (not the creator)
+      const sockets = await io.fetchSockets();
+      for (const socket of sockets) {
+        // Skip the user who created the ticket
+        if (socket.data.user?.userId !== userId) {
+          socket.emit('notification', {
+            id: `notif-${Date.now()}-${socket.id}`,
+            type: 'TICKET_CREATED',
+            description: `Ticket created: ${ticket.title}`,
+            created_at: new Date().toISOString(),
+            read: false,
+          });
+        }
+      }
+    }
+
     res.status(201).json({
       success: true,
       message: MESSAGES.TICKET_CREATED,
@@ -151,6 +173,28 @@ export const updateTicket = async (req: Request, res: Response): Promise<void> =
       ticket.id
     );
 
+    // Emit Socket.io events for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      // Emit to project room for real-time board updates
+      io.to(`project:${ticket.project_id}`).emit('ticket-updated', ticket);
+      
+      // Send notification to all OTHER users (not the updater)
+      const sockets = await io.fetchSockets();
+      for (const socket of sockets) {
+        // Skip the user who updated the ticket
+        if (socket.data.user?.userId !== userId) {
+          socket.emit('notification', {
+            id: `notif-${Date.now()}-${socket.id}`,
+            type: 'TICKET_UPDATED',
+            description: `Ticket updated: ${ticket.title}`,
+            created_at: new Date().toISOString(),
+            read: false,
+          });
+        }
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: MESSAGES.TICKET_UPDATED,
@@ -212,6 +256,28 @@ export const moveTicket = async (req: Request, res: Response): Promise<void> => 
       activityDescription,
       ticket.id
     );
+
+    // Emit Socket.io events for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      // Emit to project room for real-time board updates
+      io.to(`project:${ticket.project_id}`).emit('ticket-moved', ticket);
+      
+      // Send notification to all OTHER users (not the mover)
+      const sockets = await io.fetchSockets();
+      for (const socket of sockets) {
+        // Skip the user who moved the ticket
+        if (socket.data.user?.userId !== userId) {
+          socket.emit('notification', {
+            id: `notif-${Date.now()}-${socket.id}`,
+            type: 'TICKET_MOVED',
+            description: activityDescription,
+            created_at: new Date().toISOString(),
+            read: false,
+          });
+        }
+      }
+    }
 
     res.status(200).json({
       success: true,

@@ -31,6 +31,27 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
       `Project "${name}" created`
     );
 
+    // Emit Socket.io event for real-time notification
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('project-created', project);
+      
+      // Send notification to all OTHER users (not the creator)
+      const sockets = await io.fetchSockets();
+      for (const socket of sockets) {
+        // Skip the user who created the project
+        if (socket.data.user?.userId !== userId) {
+          socket.emit('notification', {
+            id: `notif-${Date.now()}-${socket.id}`,
+            type: 'PROJECT_CREATED',
+            description: `Project created: ${name}`,
+            created_at: new Date().toISOString(),
+            read: false,
+          });
+        }
+      }
+    }
+
     res.status(201).json({
       success: true,
       message: MESSAGES.PROJECT_CREATED,
