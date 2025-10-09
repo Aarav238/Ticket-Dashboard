@@ -6,7 +6,8 @@ import { useAuthStore } from "@/store/authStore";
 import { verifySuperUser } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Shield, X } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
+import { Shield, X, Eye, EyeOff } from "lucide-react";
 
 /**
  * Super User Toggle Component
@@ -17,6 +18,7 @@ export function SuperUserToggle() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -47,6 +49,7 @@ export function SuperUserToggle() {
         setSuperUser(true);
         setIsModalOpen(false);
         setPassword("");
+        setShowPassword(false);
       } else {
         setError("Invalid super-user password");
       }
@@ -64,6 +67,7 @@ export function SuperUserToggle() {
     if (!isLoading) {
       setIsModalOpen(false);
       setPassword("");
+      setShowPassword(false);
       setError("");
     }
   };
@@ -71,14 +75,31 @@ export function SuperUserToggle() {
   return (
     <>
       {/* Toggle button */}
-      <Button
-        variant={isSuperUser ? "primary" : "secondary"}
-        onClick={handleToggle}
-        className="flex items-center gap-2"
+      <Tooltip 
+        content={isSuperUser ? "Disable Super User Mode" : "Enable Super User Mode"} 
+        position="bottom"
       >
-        <Shield className={`h-4 w-4 ${isSuperUser ? "text-yellow-300" : ""}`} />
-        {isSuperUser ? "Super User" : "Enable Super User"}
-      </Button>
+        <button
+          onClick={handleToggle}
+          className={`p-2.5 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 border flex items-center gap-2 cursor-pointer ${
+            isSuperUser
+              ? "bg-gradient-to-r from-purple-600 to-blue-600 border-purple-500"
+              : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+          }`}
+          aria-label={isSuperUser ? "Disable Super User" : "Enable Super User"}
+        >
+          <Shield
+            className={`h-5 w-5 ${
+              isSuperUser ? "text-white" : "text-gray-700 dark:text-gray-300"
+            }`}
+          />
+          {isSuperUser && (
+            <span className="text-xs font-semibold text-white pr-1">
+              Super User
+            </span>
+          )}
+        </button>
+      </Tooltip>
 
       {/* Password verification modal */}
       <AnimatePresence>
@@ -109,13 +130,15 @@ export function SuperUserToggle() {
                     Super User Access
                   </h2>
                 </div>
-                <button
-                  onClick={handleClose}
-                  disabled={isLoading}
-                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg disabled:opacity-50"
-                >
-                  <X className="h-5 w-5 text-gray-500" />
-                </button>
+                <Tooltip content="Close" position="left">
+                  <button
+                    onClick={handleClose}
+                    disabled={isLoading}
+                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg disabled:opacity-50 cursor-pointer"
+                  >
+                    <X className="h-5 w-5 text-gray-500" />
+                  </button>
+                </Tooltip>
               </div>
 
               {/* Description */}
@@ -134,7 +157,7 @@ export function SuperUserToggle() {
                 )}
 
                 <Input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   label="Super User Password"
                   placeholder="Enter password"
                   value={password}
@@ -142,6 +165,23 @@ export function SuperUserToggle() {
                   required
                   disabled={isLoading}
                   autoFocus
+                  rightIcon={
+                    <Tooltip content={showPassword ? "Hide password" : "Show password"} position="left">
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer"
+                        disabled={isLoading}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                        ) : (
+                          <Eye className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                        )}
+                      </button>
+                    </Tooltip>
+                  }
                 />
 
                 <div className="flex gap-3 pt-4">
