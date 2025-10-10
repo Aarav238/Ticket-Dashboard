@@ -8,6 +8,7 @@ import {
   deleteProject as deleteProjectQuery,
 } from '../models/queries';
 import { createActivity } from '../services/activityService';
+import { notifyAllUsers } from '../services/notificationService';
 import { ActivityType, CreateProjectDTO } from '../types';
 import { MESSAGES } from '../config/constants';
 
@@ -36,20 +37,13 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
     if (io) {
       io.emit('project-created', project);
       
-      // Send notification to all OTHER users (not the creator)
-      const sockets = await io.fetchSockets();
-      for (const socket of sockets) {
-        // Skip the user who created the project
-        if (socket.data.user?.userId !== userId) {
-          socket.emit('notification', {
-            id: `notif-${Date.now()}-${socket.id}`,
-            type: 'PROJECT_CREATED',
-            description: `Project created: ${name}`,
-            created_at: new Date().toISOString(),
-            read: false,
-          });
-        }
-      }
+      // Send notifications to all users (Socket.io for online, Email for offline)
+      await notifyAllUsers(io, userId, {
+        type: 'PROJECT_CREATED',
+        title: 'New Project Created',
+        description: `Project created: ${name}`,
+        project_id: project.id,
+      });
     }
 
     res.status(201).json({
@@ -126,6 +120,7 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
   try {
     const { id } = req.params;
     const { name, description } = req.body;
+    const userId = req.user!.userId;
 
     const project = await updateProjectQuery(id, name, description);
 
@@ -135,6 +130,27 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
         message: MESSAGES.PROJECT_NOT_FOUND,
       });
       return;
+    }
+
+    // Log activity
+    await createActivity(
+      project.id,
+      userId,
+      ActivityType.PROJECT_UPDATED,
+      `Project "${name}" updated`
+    );
+
+    // Send notifications to all users (Socket.io for online, Email for offline)
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('project-updated', project);
+      
+      await notifyAllUsers(io, userId, {
+        type: 'PROJECT_UPDATED',
+        title: 'Project Updated',
+        description: `Project updated: ${name}`,
+        project_id: project.id,
+      });
     }
 
     res.status(200).json({
@@ -158,6 +174,18 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
 export const deleteProject = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const userId = req.user!.userId;
+
+    // Get project before deletion for notification
+    const project = await getProjectById(id);
+    
+    if (!project) {
+      res.status(404).json({
+        success: false,
+        message: MESSAGES.PROJECT_NOT_FOUND,
+      });
+      return;
+    }
 
     const deleted = await deleteProjectQuery(id);
 
@@ -167,6 +195,27 @@ export const deleteProject = async (req: Request, res: Response): Promise<void> 
         message: MESSAGES.PROJECT_NOT_FOUND,
       });
       return;
+    }
+
+    // Log activity
+    await createActivity(
+      project.id,
+      userId,
+      ActivityType.PROJECT_DELETED,
+      `Project "${project.name}" deleted`
+    );
+
+    // Send notifications to all users (Socket.io for online, Email for offline)
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('project-deleted', { id });
+      
+      await notifyAllUsers(io, userId, {
+        type: 'PROJECT_DELETED',
+        title: 'Project Deleted',
+        description: `Project deleted: ${project.name}`,
+        project_id: project.id,
+      });
     }
 
     res.status(200).json({

@@ -2,6 +2,7 @@
 import { Server as SocketServer } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import { verifyTokenSafe } from '../utils/jwt';
+import { setUserOnlineStatus } from '../models/queries';
 
 /**
  * Initializes Socket.io server with authentication
@@ -40,6 +41,11 @@ export const initializeSocket = (httpServer: HTTPServer): SocketServer => {
   io.on('connection', (socket) => {
     const user = socket.data.user;
     console.log(`✅ User connected: ${user.email} (${socket.id})`);
+
+    // Set user as online
+    setUserOnlineStatus(user.userId, true).catch((error) => {
+      console.error('Error setting user online:', error);
+    });
 
     // Join user-specific room for notifications
     socket.join(`user-${user.userId}`);
@@ -97,6 +103,11 @@ export const initializeSocket = (httpServer: HTTPServer): SocketServer => {
     // Handle disconnect
     socket.on('disconnect', () => {
       console.log(`❌ User disconnected: ${user.email} (${socket.id})`);
+      
+      // Set user as offline
+      setUserOnlineStatus(user.userId, false).catch((error) => {
+        console.error('Error setting user offline:', error);
+      });
     });
   });
 

@@ -9,6 +9,7 @@ import {
   getMaxOrderIndex,
 } from '../models/queries';
 import { createActivity } from '../services/activityService';
+import { notifyAllUsers } from '../services/notificationService';
 import { TicketFactory } from '../patterns/TicketFactory';
 import {
   ActivityType,
@@ -60,20 +61,14 @@ export const createTicket = async (req: Request, res: Response): Promise<void> =
       // Emit to project room for real-time board updates
       io.to(`project:${ticket.project_id}`).emit('ticket-created', ticket);
       
-      // Send notification to all OTHER users (not the creator)
-      const sockets = await io.fetchSockets();
-      for (const socket of sockets) {
-        // Skip the user who created the ticket
-        if (socket.data.user?.userId !== userId) {
-          socket.emit('notification', {
-            id: `notif-${Date.now()}-${socket.id}`,
-            type: 'TICKET_CREATED',
-            description: `Ticket created: ${ticket.title}`,
-            created_at: new Date().toISOString(),
-            read: false,
-          });
-        }
-      }
+      // Send notifications to all users (Socket.io for online, Email for offline)
+      await notifyAllUsers(io, userId, {
+        type: 'TICKET_CREATED',
+        title: 'New Ticket Created',
+        description: `Ticket created: ${ticket.title}`,
+        project_id: ticket.project_id,
+        ticket_id: ticket.id,
+      });
     }
 
     res.status(201).json({
@@ -179,20 +174,14 @@ export const updateTicket = async (req: Request, res: Response): Promise<void> =
       // Emit to project room for real-time board updates
       io.to(`project:${ticket.project_id}`).emit('ticket-updated', ticket);
       
-      // Send notification to all OTHER users (not the updater)
-      const sockets = await io.fetchSockets();
-      for (const socket of sockets) {
-        // Skip the user who updated the ticket
-        if (socket.data.user?.userId !== userId) {
-          socket.emit('notification', {
-            id: `notif-${Date.now()}-${socket.id}`,
-            type: 'TICKET_UPDATED',
-            description: `Ticket updated: ${ticket.title}`,
-            created_at: new Date().toISOString(),
-            read: false,
-          });
-        }
-      }
+      // Send notifications to all users (Socket.io for online, Email for offline)
+      await notifyAllUsers(io, userId, {
+        type: 'TICKET_UPDATED',
+        title: 'Ticket Updated',
+        description: `Ticket updated: ${ticket.title}`,
+        project_id: ticket.project_id,
+        ticket_id: ticket.id,
+      });
     }
 
     res.status(200).json({
@@ -263,20 +252,14 @@ export const moveTicket = async (req: Request, res: Response): Promise<void> => 
       // Emit to project room for real-time board updates
       io.to(`project:${ticket.project_id}`).emit('ticket-moved', ticket);
       
-      // Send notification to all OTHER users (not the mover)
-      const sockets = await io.fetchSockets();
-      for (const socket of sockets) {
-        // Skip the user who moved the ticket
-        if (socket.data.user?.userId !== userId) {
-          socket.emit('notification', {
-            id: `notif-${Date.now()}-${socket.id}`,
-            type: 'TICKET_MOVED',
-            description: activityDescription,
-            created_at: new Date().toISOString(),
-            read: false,
-          });
-        }
-      }
+      // Send notifications to all users (Socket.io for online, Email for offline)
+      await notifyAllUsers(io, userId, {
+        type: 'TICKET_MOVED',
+        title: 'Ticket Moved',
+        description: activityDescription,
+        project_id: ticket.project_id,
+        ticket_id: ticket.id,
+      });
     }
 
     res.status(200).json({
@@ -300,6 +283,18 @@ export const moveTicket = async (req: Request, res: Response): Promise<void> => 
 export const deleteTicket = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const userId = req.user!.userId;
+
+    // Get ticket before deletion for notification
+    const ticket = await getTicketById(id);
+    
+    if (!ticket) {
+      res.status(404).json({
+        success: false,
+        message: MESSAGES.TICKET_NOT_FOUND,
+      });
+      return;
+    }
 
     const deleted = await deleteTicketQuery(id);
 
@@ -309,6 +304,31 @@ export const deleteTicket = async (req: Request, res: Response): Promise<void> =
         message: MESSAGES.TICKET_NOT_FOUND,
       });
       return;
+    }
+
+    // Log activity
+    await createActivity(
+      ticket.project_id,
+      userId,
+      ActivityType.TICKET_DELETED,
+      `Ticket "${ticket.title}" deleted`,
+      ticket.id
+    );
+
+    // Emit Socket.io events for real-time updates
+    const io = req.app.get('io');
+    if (io) {
+      // Emit to project room for real-time board updates
+      io.to(`project:${ticket.project_id}`).emit('ticket-deleted', { id: ticket.id });
+      
+      // Send notifications to all users (Socket.io for online, Email for offline)
+      await notifyAllUsers(io, userId, {
+        type: 'TICKET_DELETED',
+        title: 'Ticket Deleted',
+        description: `Ticket deleted: ${ticket.title}`,
+        project_id: ticket.project_id,
+        ticket_id: ticket.id,
+      });
     }
 
     res.status(200).json({

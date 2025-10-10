@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import pool from './config/database';
 import { initializeSocket } from './config/socket';
 import { errorHandler, notFound } from './middleware/errorHandler';
+import { updateLastSeenMiddleware } from './middleware/updateLastSeen';
 
 // Import routes
 import authRoutes from './routes/authRoutes';
@@ -39,6 +40,9 @@ app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
+
+// Update last_seen timestamp for authenticated users
+app.use(updateLastSeenMiddleware);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

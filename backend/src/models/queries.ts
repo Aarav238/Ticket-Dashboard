@@ -52,6 +52,83 @@ export const getAllUsers = async (): Promise<User[]> => {
   return result.rows;
 };
 
+/**
+ * Updates user's last_seen timestamp to current time
+ * @param userId - User ID
+ * @returns Promise<void>
+ */
+export const updateUserLastSeen = async (userId: string): Promise<void> => {
+  const query = `
+    UPDATE users
+    SET last_seen = CURRENT_TIMESTAMP
+    WHERE id = $1
+  `;
+  await pool.query(query, [userId]);
+};
+
+/**
+ * Sets user's online status
+ * @param userId - User ID
+ * @param isOnline - Online status (true/false)
+ * @returns Promise<void>
+ */
+export const setUserOnlineStatus = async (
+  userId: string,
+  isOnline: boolean
+): Promise<void> => {
+  const query = `
+    UPDATE users
+    SET is_online = $1, last_seen = CURRENT_TIMESTAMP
+    WHERE id = $2
+  `;
+  await pool.query(query, [isOnline, userId]);
+};
+
+/**
+ * Checks if a user is considered offline
+ * User is offline if:
+ * - is_online flag is FALSE, OR
+ * - last_seen timestamp is older than 2 minutes
+ * @param userId - User ID
+ * @returns Promise<boolean> - true if user is offline
+ */
+export const isUserOffline = async (userId: string): Promise<boolean> => {
+  const query = `
+    SELECT 
+      is_online,
+      last_seen,
+      (EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_seen)) > 120) as is_stale
+    FROM users
+    WHERE id = $1
+  `;
+  const result = await pool.query(query, [userId]);
+  
+  if (!result.rows[0]) {
+    return true; // User not found, consider offline
+  }
+  
+  const { is_online, is_stale } = result.rows[0];
+  
+  // User is offline if explicitly marked offline OR last_seen is older than 2 minutes
+  return !is_online || is_stale;
+};
+
+/**
+ * Gets all users except the specified user
+ * Used for sending notifications to other users
+ * @param excludeUserId - User ID to exclude
+ * @returns Promise<User[]>
+ */
+export const getAllUsersExcept = async (excludeUserId: string): Promise<User[]> => {
+  const query = `
+    SELECT * FROM users
+    WHERE id != $1
+    ORDER BY created_at DESC
+  `;
+  const result = await pool.query(query, [excludeUserId]);
+  return result.rows;
+};
+
 // ============ PROJECT QUERIES ============
 
 /**
