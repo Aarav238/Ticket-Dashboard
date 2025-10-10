@@ -764,7 +764,7 @@ Our application includes a comprehensive **Interactive Guide** that helps users 
 ### Live Application
 - **Frontend**: [https://ticket-dashboard-ashen.vercel.app/](https://ticket-dashboard-ashen.vercel.app) (Vercel)
 - **Backend**: [https://ticket-dashboard-7ujo.onrender.com](https://ticket-dashboard-7ujo.onrender.com) (Render)
-
+- **Super User Password**: AaravShukla@123
 ### Backend Deployment
 1. Set up PostgreSQL database
 2. Configure environment variables
