@@ -235,7 +235,7 @@ export function GuideModal({ isOpen, onClose }: GuideModalProps) {
                 
                 <Button
                   onClick={handleCompleteSection}
-                  variant={completedSections.includes(currentSection.id) ? "default" : "outline"}
+                  variant={completedSections.includes(currentSection.id) ? "primary" : "ghost"}
                   className="flex items-center gap-2"
                 >
                   <CheckCircle className="h-4 w-4" />
