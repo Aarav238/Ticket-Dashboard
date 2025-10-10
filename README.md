@@ -17,12 +17,15 @@ A modern, full-stack ticket management system built with Next.js 15, TypeScript,
 - **Mobile-First**: Fully responsive design optimized for all screen sizes
 - **Interactive Elements**: Hover effects, animations, and smooth transitions
 - **Floating Dock**: macOS-style navigation dock
+- **Interactive Guide**: Comprehensive application guide with progress tracking
 
 ### 🔔 Notifications
 - **Real-time Notifications**: Instant updates via Socket.io
 - **Email Notifications**: Rich HTML emails for offline users via SendGrid
 - **Notification Panel**: Dedicated panel with read/unread status
 - **Browser Notifications**: Native browser notifications support
+- **Hybrid System**: Smart delivery based on user online/offline status
+- **Rich Content**: Detailed notifications with context and action details
 
 ### 🛡️ Security & Authentication
 - **OTP Authentication**: Secure email-based login system
@@ -282,6 +285,215 @@ npm run dev
 - Project notifications
 - Ticket notifications
 - System alerts
+
+## 🔔 Notification System
+
+### How Notifications Work
+
+Our notification system uses a **hybrid approach** that intelligently delivers notifications based on user presence:
+
+#### 📱 **Real-time Notifications (Socket.io)**
+- **For Online Users**: Instant delivery via WebSocket connection
+- **Immediate Updates**: Project changes, ticket updates, assignments
+- **Live Collaboration**: See changes as they happen
+
+#### 📧 **Email Notifications (SendGrid)**
+- **For Offline Users**: HTML emails with full context
+- **Offline Threshold**: 2 minutes of inactivity
+- **Detailed Content**: Includes ticket details, project info, and action context
+
+#### 🎯 **Smart Delivery Logic**
+```typescript
+// User is considered offline if:
+// 1. is_online flag is false, OR
+// 2. last_seen is older than 2 minutes
+
+const isOffline = !user.is_online || 
+  (Date.now() - user.last_seen.getTime()) > 2 * 60 * 1000;
+
+// Send via appropriate channel
+if (isOffline) {
+  await sendEmailNotification(user, notificationData);
+} else {
+  socket.to(user.id).emit('notification', notificationData);
+}
+```
+
+### 🧪 Testing Notifications
+
+#### **In-App Testing**
+1. **Open Two Browser Windows**: 
+   - Window 1: Log in as User A
+   - Window 2: Log in as User B (different email)
+
+2. **Test Real-time Notifications**:
+   - Create/edit a project in Window 1
+   - Create/edit a ticket in Window 1
+   - Assign a ticket in Window 1
+   - Watch notifications appear instantly in Window 2
+
+3. **Test Notification Panel**:
+   - Click the bell icon (top-left)
+   - Mark notifications as read/unread
+   - Test "Mark all as read" functionality
+
+#### **Email Testing**
+1. **Simulate Offline User**:
+   - Login to the application
+   - Close the browser/tab
+   - Wait 2+ minutes
+   - Perform actions from another account
+
+2. **Check Email Inbox**:
+   - Look for emails from your SendGrid verified sender
+   - Verify HTML formatting
+   - Check notification content and links
+
+3. **Test Different Scenarios**:
+   - Project creation/updates
+   - Ticket creation/updates/assignments
+   - Super user actions
+
+#### **Notification Types**
+- **Project Created**: "New project 'Project Name' created by user@email.com"
+- **Ticket Created**: "New ticket 'Ticket Title' created in Project Name"
+- **Ticket Assigned**: "Ticket 'Ticket Title' assigned to you by user@email.com"
+- **Ticket Updated**: "Ticket 'Ticket Title' updated in Project Name"
+- **Ticket Moved**: "Ticket 'Ticket Title' moved to In Progress"
+
+## 🗄️ Database Architecture
+
+### Why PostgreSQL Over NoSQL?
+
+#### **✅ Advantages of PostgreSQL (Our Choice)**
+
+1. **ACID Compliance**: Ensures data integrity for critical operations
+   - Project updates are atomic
+   - Ticket assignments are consistent
+   - No partial updates or data corruption
+
+2. **Relational Data**: Perfect for our structured data model
+   - Users → Projects → Tickets relationships
+   - Foreign key constraints prevent orphaned data
+   - Complex queries with JOINs are efficient
+
+3. **Advanced Querying**: SQL provides powerful data operations
+   - Complex filtering and sorting
+   - Aggregations (count tickets per project, user activity)
+   - Full-text search capabilities
+
+4. **Data Validation**: Schema enforcement at database level
+   - ENUM types for ticket status/priority
+   - NOT NULL constraints
+   - Data type validation
+
+5. **Mature Ecosystem**: Proven reliability and tooling
+   - Supabase provides excellent PostgreSQL hosting
+   - Rich migration tools
+   - Backup and recovery solutions
+
+#### **❌ Why Not NoSQL (MongoDB, etc.)?**
+
+1. **Data Structure**: Our data is naturally relational
+   - Projects contain multiple tickets
+   - Users are assigned to tickets
+   - Complex relationships would require manual management
+
+2. **Consistency Requirements**: Ticket management needs strong consistency
+   - Can't have tickets without projects
+   - User assignments must be valid
+   - Status updates must be atomic
+
+3. **Query Complexity**: We need complex queries
+   - "Get all tickets for user across all projects"
+   - "Find projects with overdue tickets"
+   - "Generate user activity reports"
+
+4. **Transaction Requirements**: Multi-table operations
+   - Creating a ticket updates project statistics
+   - User actions affect multiple entities
+   - Need rollback capabilities
+
+### Database Schema Benefits
+
+```sql
+-- Strong relationships with foreign keys
+CREATE TABLE tickets (
+  id UUID PRIMARY KEY,
+  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  assigned_to UUID REFERENCES users(id),
+  created_by UUID REFERENCES users(id),
+  -- ... other fields
+);
+
+-- Data integrity with ENUMs
+CREATE TYPE ticket_status AS ENUM ('TODO', 'IN_PROGRESS', 'DONE');
+CREATE TYPE ticket_priority AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT');
+```
+
+## 📚 Interactive Guide System
+
+### Guide Functionality
+
+Our application includes a comprehensive **Interactive Guide** that helps users understand all features and functionalities:
+
+#### 🎯 **Guide Features**
+- **7 Comprehensive Sections**: Covering all aspects of the application
+- **Progress Tracking**: Visual progress bar with completion percentage
+- **Interactive Navigation**: Jump between sections or follow sequentially
+- **Completion System**: Mark sections as complete for progress tracking
+- **Reset Functionality**: Start over anytime
+
+#### 📖 **Guide Sections**
+
+1. **🔐 Authentication & Login**
+   - OTP-based login system
+   - Super user mode explanation
+   - JWT token management
+
+2. **📁 Project Management**
+   - Creating and editing projects
+   - Project permissions and access
+   - Project organization
+
+3. **🎫 Ticket Management**
+   - Creating and updating tickets
+   - Drag-and-drop Kanban board
+   - Ticket assignment and prioritization
+
+4. **🔔 Notifications System**
+   - Real-time vs email notifications
+   - Notification panel usage
+   - User presence tracking
+
+5. **🎨 User Interface**
+   - Dark/light mode toggle
+   - Responsive design features
+   - Navigation and shortcuts
+
+6. **⚡ Real-time Features**
+   - Socket.io integration
+   - Live collaboration
+   - Instant updates
+
+7. **⚙️ Advanced Features**
+   - Super user capabilities
+   - System settings
+   - Power user tips
+
+
+#### 🎮 **How to Use the Guide**
+1. **Access**: Click the help icon (❓) in the floating dock
+2. **Navigate**: Use sidebar or Previous/Next buttons
+3. **Complete**: Mark sections as complete for progress tracking
+4. **Reset**: Clear all progress and start fresh
+5. **Track**: Monitor your progress with the visual progress bar
+
+#### 💡 **Guide Benefits**
+- **Onboarding**: New users learn the system quickly
+- **Feature Discovery**: Existing users discover advanced features
+- **Self-Service**: Reduce support requests with comprehensive documentation
+- **Engagement**: Gamified progress tracking encourages completion
 
 ## 🚀 Deployment
 
