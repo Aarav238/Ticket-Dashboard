@@ -33,7 +33,271 @@ A modern, full-stack ticket management system built with Next.js 15, TypeScript,
 - **Super User Access**: Password-protected administrative mode
 - **Route Protection**: Middleware-based route security
 
-## 🏗️ Architecture
+## 🏗️ Architecture & Design Patterns
+
+### System Architecture
+
+The application follows a **layered architecture** with clear separation of concerns:
+
+```
+┌─────────────────────────────────────────────┐
+│           Frontend (Next.js 15)             │
+│  ┌─────────────────────────────────────┐   │
+│  │  Components (UI Layer)              │   │
+│  ├─────────────────────────────────────┤   │
+│  │  Stores (State Management)          │   │
+│  ├─────────────────────────────────────┤   │
+│  │  API Client (HTTP/Socket)           │   │
+│  └─────────────────────────────────────┘   │
+└──────────────┬──────────────────────────────┘
+               │ REST API / WebSocket
+┌──────────────┴──────────────────────────────┐
+│        Backend (Node.js + Express)          │
+│  ┌─────────────────────────────────────┐   │
+│  │  Routes (API Endpoints)             │   │
+│  ├─────────────────────────────────────┤   │
+│  │  Middleware (Auth, Validation)      │   │
+│  ├─────────────────────────────────────┤   │
+│  │  Controllers (Request Handlers)     │   │
+│  ├─────────────────────────────────────┤   │
+│  │  Services (Business Logic)          │   │
+│  ├─────────────────────────────────────┤   │
+│  │  Patterns (Strategy, Factory)       │   │
+│  ├─────────────────────────────────────┤   │
+│  │  Models (Database Queries)          │   │
+│  └─────────────────────────────────────┘   │
+└──────────────┬──────────────────────────────┘
+               │ SQL Queries
+┌──────────────┴──────────────────────────────┐
+│      Database (PostgreSQL/Supabase)         │
+└─────────────────────────────────────────────┘
+```
+
+### 🎨 Design Patterns Implemented
+
+#### 1️⃣ **Strategy Pattern** (Notification System)
+**Location**: `backend/src/patterns/NotificationStrategy.ts`
+
+**Purpose**: Dynamically switch between different notification delivery methods
+
+**Implementation**:
+```typescript
+interface NotificationStrategy {
+  send(user: User, activity: Activity): Promise<void>;
+}
+
+// Email Strategy
+class EmailNotificationStrategy implements NotificationStrategy {
+  async send(user: User, activity: Activity): Promise<void> {
+    await sendNotificationEmail(user.email, subject, message);
+  }
+}
+
+// Socket.io Strategy
+class SocketNotificationStrategy implements NotificationStrategy {
+  async send(user: User, activity: Activity): Promise<void> {
+    this.io.to(`user-${user.id}`).emit('notification', data);
+  }
+}
+
+// Context
+class NotificationService {
+  private strategy: NotificationStrategy;
+  
+  setStrategy(strategy: NotificationStrategy): void {
+    this.strategy = strategy;
+  }
+  
+  async notify(user: User, activity: Activity): Promise<void> {
+    await this.strategy.send(user, activity);
+  }
+}
+```
+
+**Benefits**:
+- ✅ Easy to add new notification methods (SMS, Push, etc.)
+- ✅ Runtime strategy switching based on user status
+- ✅ Testable in isolation
+- ✅ Follows Open/Closed Principle
+
+#### 2️⃣ **Factory Pattern** (Ticket Creation)
+**Location**: `backend/src/patterns/TicketFactory.ts`
+
+**Purpose**: Create tickets with type-specific defaults and validation
+
+**Implementation**:
+```typescript
+class TicketFactory {
+  static createTicket(type: TicketType, data: Omit<CreateTicketDTO, 'type'>): CreateTicketDTO {
+    switch (type) {
+      case TicketType.BUG:
+        return { ...data, type: TicketType.BUG, priority: data.priority || TicketPriority.HIGH };
+      case TicketType.FEATURE:
+        return { ...data, type: TicketType.FEATURE, priority: data.priority || TicketPriority.MEDIUM };
+      // ... more types
+    }
+  }
+  
+  static isUrgent(type: TicketType): boolean {
+    return type === TicketType.BUG;
+  }
+  
+  static getAssignmentStrategy(type: TicketType): string {
+    // Returns recommended assignment strategy
+  }
+}
+```
+
+**Benefits**:
+- ✅ Centralized ticket creation logic
+- ✅ Type-specific defaults (bugs → high priority)
+- ✅ Consistent ticket initialization
+- ✅ Easy to extend with new ticket types
+
+#### 3️⃣ **Middleware Pattern** (Express.js)
+**Location**: `backend/src/middleware/`
+
+**Purpose**: Cross-cutting concerns and request processing pipeline
+
+**Implementation**:
+```typescript
+// Authentication Middleware
+export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
+  const token = extractTokenFromHeader(req.headers.authorization);
+  const decoded = verifyTokenSafe(token);
+  req.user = decoded;
+  next();
+};
+
+// Validation Middleware
+export const validate = (schema: ZodSchema) => (req: Request, res: Response, next: NextFunction) => {
+  const result = schema.safeParse(req.body);
+  if (!result.success) return res.status(400).json({ errors: result.error });
+  next();
+};
+
+// Error Handler Middleware
+export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error(err.stack);
+  res.status(500).json({ success: false, message: 'Internal server error' });
+};
+
+// User Activity Tracking
+export const updateLastSeen = async (req: Request, res: Response, next: NextFunction) => {
+  if (req.user?.userId) {
+    await setUserOnline(req.user.userId);
+  }
+  next();
+};
+```
+
+**Benefits**:
+- ✅ Reusable request processing logic
+- ✅ Clean separation of concerns
+- ✅ Easy to compose and order
+- ✅ Testable in isolation
+
+#### 4️⃣ **Repository Pattern** (Data Access Layer)
+**Location**: `backend/src/models/queries.ts`
+
+**Purpose**: Abstract database operations and queries
+
+**Implementation**:
+```typescript
+// All database queries centralized in one place
+export const getUserByEmail = async (email: string): Promise<User | null> => {
+  const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+  return result.rows[0] || null;
+};
+
+export const createProject = async (data: CreateProjectDTO): Promise<Project> => {
+  const result = await pool.query(
+    'INSERT INTO projects (name, description, created_by) VALUES ($1, $2, $3) RETURNING *',
+    [data.name, data.description, data.created_by]
+  );
+  return result.rows[0];
+};
+```
+
+**Benefits**:
+- ✅ Database logic separated from business logic
+- ✅ Easy to swap database implementations
+- ✅ Consistent error handling
+- ✅ Query optimization in one place
+
+#### 5️⃣ **Observer Pattern** (Real-time Updates)
+**Location**: Socket.io event system
+
+**Purpose**: Real-time event broadcasting and subscription
+
+**Implementation**:
+```typescript
+// Server broadcasts events
+io.to(`project-${projectId}`).emit('ticket-created', ticketData);
+io.to(`user-${userId}`).emit('notification', notificationData);
+
+// Clients subscribe to events
+socket.on('ticket-updated', (data) => {
+  updateTicketInStore(data);
+});
+
+socket.on('notification', (data) => {
+  addNotificationToStore(data);
+});
+```
+
+**Benefits**:
+- ✅ Decoupled event producers and consumers
+- ✅ Real-time collaboration
+- ✅ Multiple subscribers per event
+- ✅ Room-based event filtering
+
+#### 6️⃣ **Singleton Pattern** (Database Connection)
+**Location**: `backend/src/config/database.ts`
+
+**Purpose**: Single database connection pool instance
+
+**Implementation**:
+```typescript
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
+
+export default pool; // Single instance exported
+```
+
+**Benefits**:
+- ✅ Single connection pool across app
+- ✅ Resource optimization
+- ✅ Connection pooling
+- ✅ Consistent database access
+
+### 🔧 Architectural Principles
+
+#### **Separation of Concerns**
+- **Routes**: Define API endpoints and HTTP methods
+- **Controllers**: Handle HTTP requests/responses
+- **Services**: Contain business logic
+- **Models**: Database queries and data access
+- **Middleware**: Cross-cutting concerns (auth, validation, logging)
+
+#### **Dependency Injection**
+- Services receive dependencies via constructor
+- Easier testing with mock dependencies
+- Loose coupling between components
+
+#### **Type Safety**
+- TypeScript throughout (frontend + backend)
+- Shared type definitions
+- Compile-time error catching
+- Better IDE support and autocomplete
+
+#### **Error Handling**
+- Centralized error middleware
+- Consistent error response format
+- Validation errors with Zod
+- Database error handling
 
 ### Backend Stack
 - **Node.js** with Express.js
