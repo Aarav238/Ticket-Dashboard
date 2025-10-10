@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { useThemeStore } from "@/store/themeStore";
@@ -8,6 +8,7 @@ import { useNotificationStore } from "@/store/notificationStore";
 import { FloatingDock } from "@/components/ui/floating-dock";
 import { NotificationPanel } from "@/components/notifications/notification-panel";
 import { SuperUserToggle } from "@/components/auth/super-user-toggle";
+import { GuideModal } from "@/components/ui/guide-modal";
 import { AceternityLoading } from "@/components/ui/aceternity-loading";
 import { Tooltip } from "@/components/ui/tooltip";
 import { 
@@ -16,7 +17,8 @@ import {
   Bell, 
   LogOut,
   Moon,
-  Sun
+  Sun,
+  HelpCircle
 } from "lucide-react";
 import { socketService } from "@/lib/socket";
 
@@ -30,6 +32,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, logout, token, hasHydrated } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const { togglePanel } = useNotificationStore();
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   // Connect to Socket.io on mount
   useEffect(() => {
@@ -70,6 +73,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       title: "Projects",
       icon: <FolderKanban className="h-full w-full text-neutral-500 dark:text-neutral-300" />,
       href: "/projects",
+    },
+    {
+      title: "Guide",
+      icon: <HelpCircle className="h-full w-full text-blue-500 dark:text-blue-400" />,
+      href: "#",
+      onClick: () => setIsGuideOpen(true),
     },
     {
       title: "Notifications",
@@ -123,6 +132,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Notification panel */}
       <NotificationPanel />
+
+      {/* Guide modal */}
+      <GuideModal 
+        isOpen={isGuideOpen} 
+        onClose={() => setIsGuideOpen(false)} 
+      />
 
       {/* Floating dock navigation */}
       <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-40">
