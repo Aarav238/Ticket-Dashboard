@@ -2,6 +2,10 @@
 
 Modern, real-time ticket management system built with Next.js 15, TypeScript, and Aceternity UI components.
 
+## 🌐 Live Deployment
+- **Frontend**: [https://ticket-dashboard-ashen.vercel.app](https://ticket-dashboard-ashen.vercel.app) (Vercel)
+- **Backend API**: [https://ticket-dashboard-7ujo.onrender.com](https://ticket-dashboard-7ujo.onrender.com) (Render)
+
 ## 🚀 Features
 
 - **OTP Authentication** - Passwordless login with email OTP
@@ -9,21 +13,26 @@ Modern, real-time ticket management system built with Next.js 15, TypeScript, an
 - **Drag-and-Drop Kanban** - Intuitive ticket management with dnd-kit
 - **Super-User Mode** - Elevated privileges for ticket assignment
 - **Beautiful UI** - Aceternity UI components with Framer Motion animations
-- **Dark Mode** - Full dark mode support
+- **Dark Mode** - Full dark mode support with persistent preferences
 - **Responsive Design** - Mobile-first responsive design
+- **Rich Notifications** - Real-time notifications with email fallback
+- **User Presence** - Online/offline user tracking
+- **Hybrid Notifications** - Socket.io for online users, email for offline users
 
 ## 📦 Tech Stack
 
-- **Framework**: Next.js 15.1.8 (App Router)
+- **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
-- **Styling**: Tailwind CSS 4.x
-- **State Management**: Zustand 5.x with persist middleware
+- **Styling**: Tailwind CSS 4.x with dark mode
+- **State Management**: Zustand with persist middleware
 - **Animations**: Framer Motion
 - **Drag-and-Drop**: @dnd-kit
 - **Forms**: React Hook Form + Zod validation
 - **Icons**: Lucide React + Tabler Icons
-- **HTTP Client**: Axios
-- **Real-time**: Socket.io-client 4.x
+- **HTTP Client**: Axios with interceptors
+- **Real-time**: Socket.io-client
+- **UI Components**: Aceternity UI
+- **Theme**: Custom theme provider with localStorage persistence
 
 ## 🏗️ Project Structure
 
@@ -90,8 +99,9 @@ Create a `.env.local` file:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000
-NEXT_PUBLIC_SOCKET_URL=http://localhost:5000
 ```
+
+For production deployment, update the API URL to your backend URL.
 
 ### 3. Run Development Server
 
@@ -129,7 +139,9 @@ The app will run on `http://localhost:3000`
 - Real-time notifications from Socket.io
 - Browser notifications support
 - Notification panel with history
-- Auto-dismiss after 10 seconds
+- Rich email notifications for offline users
+- Unread count badge
+- Mark as read functionality
 
 ### Super-User Mode
 - Password verification required
@@ -146,6 +158,8 @@ The app uses Socket.io for real-time collaboration:
 - **Ticket Moved** - Drag-and-drop updates everyone
 - **Ticket Deleted** - Deletions reflect immediately
 - **Notifications** - Activity updates in real-time
+- **User Presence** - Online/offline status tracking
+- **Hybrid Notifications** - Socket.io for online users, email for offline users
 
 ## 🎨 UI Components
 
@@ -228,9 +242,13 @@ Or connect your GitHub repo to Vercel for automatic deployments.
 Add these in your Vercel project settings:
 
 ```
-NEXT_PUBLIC_API_URL=https://your-backend-api.com
-NEXT_PUBLIC_SOCKET_URL=https://your-backend-api.com
+NEXT_PUBLIC_API_URL=https://ticket-dashboard-7ujo.onrender.com
 ```
+
+### Current Deployment
+- **Frontend**: Deployed on Vercel with automatic deployments
+- **Backend**: Deployed on Render with PostgreSQL database
+- **Domain**: Custom domain with SSL certificate
 
 ## 📝 Scripts
 
@@ -259,20 +277,22 @@ npm install
 ### Issue: Dark mode not working
 **Solution**: Clear browser cache and localStorage
 
-## 🎯 Future Enhancements
+## 🎯 Current Features
 
-- [ ] Add user profile page
-- [ ] Implement search and filters
-- [ ] Add activity timeline
-- [ ] Export tickets to CSV
-- [ ] Add ticket attachments
-- [ ] Implement comments system
-- [ ] Add keyboard shortcuts
-- [ ] PWA support
-
-## 📄 License
-
-MIT License
+### ✅ Implemented
+- [x] OTP Authentication with auto user creation
+- [x] Real-time Socket.io integration
+- [x] Drag-and-drop Kanban board
+- [x] Super-user mode with password protection
+- [x] Dark/light mode with persistence
+- [x] Mobile-responsive design
+- [x] Rich notifications system
+- [x] User presence tracking
+- [x] Hybrid notifications (Socket.io + Email)
+- [x] Project management
+- [x] Ticket CRUD operations
+- [x] Real-time updates
+- [x] Beautiful UI with Aceternity components
 
 ## 🙏 Credits
 
@@ -280,6 +300,7 @@ MIT License
 - Vercel for Next.js framework
 - dnd-kit for drag-and-drop
 - Zustand for state management
+- Cursor
 
 ---
 

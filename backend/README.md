@@ -2,20 +2,26 @@
 
 A robust Node.js backend with Express, TypeScript, Socket.io, and PostgreSQL for real-time project and ticket management.
 
+## 🌐 Live Deployment
+- **Backend API**: [https://ticket-dashboard-7ujo.onrender.com](https://ticket-dashboard-7ujo.onrender.com) (Render)
+- **Frontend**: [https://ticket-dashboard-ashen.vercel.app](https://ticket-dashboard-ashen.vercel.app) (Vercel)
+
 ## 🚀 Features
 
 - **OTP Authentication** - Email-based OTP login with auto user registration
 - **Real-time Updates** - Socket.io for live ticket updates across clients
-- **Design Patterns** - Strategy pattern for notifications, Factory pattern for tickets
+- **Rich Notifications** - SendGrid email notifications for offline users
 - **Super User Mode** - Password-protected mode to view user information
 - **Activity Logging** - Track all project and ticket changes
 - **Drag-and-Drop API** - RESTful endpoints for ticket reordering
+- **Online/Offline Tracking** - User presence detection
+- **Hybrid Notifications** - Socket.io for online users, email for offline users
 
 ## 📋 Prerequisites
 
-- Node.js 20+ 
+- Node.js 18+ 
 - PostgreSQL (Supabase recommended)
-- SMTP credentials (Gmail App Password or SendGrid)
+- SendGrid account for email services
 
 ## 🛠️ Installation
 
@@ -27,7 +33,7 @@ A robust Node.js backend with Express, TypeScript, Socket.io, and PostgreSQL for
 
 2. **Setup Database**
    - Create a PostgreSQL database in Supabase
-   - Run the SQL schema from `database-schema.sql` in Supabase SQL Editor
+   - Run the SQL migrations from `migrations/` folder in Supabase SQL Editor
    - Copy your connection string
 
 3. **Configure Environment**
@@ -37,11 +43,27 @@ A robust Node.js backend with Express, TypeScript, Socket.io, and PostgreSQL for
    
    Edit `.env` with your credentials:
    ```env
+   # Server Configuration
+   PORT=5000
+   NODE_ENV=development
+   
+   # Database
    DATABASE_URL=your-supabase-connection-string
-   SMTP_USER=your-email@gmail.com
-   SMTP_PASSWORD=your-gmail-app-password
+   
+   # JWT
    JWT_SECRET=your-secret-min-32-characters
+   JWT_EXPIRES_IN=7d
+   
+   # Email Service (SendGrid)
+   SENDGRID_API_KEY=your-sendgrid-api-key
+   SENDGRID_FROM_EMAIL=your-verified-email
+   
+   # Super User
    SUPER_USER_PASSWORD=your-admin-password
+   
+   # CORS
+   SOCKET_CORS_ORIGIN=http://localhost:3000
+   CLIENT_URL=http://localhost:3000
    ```
 
 4. **Start Development Server**
@@ -60,13 +82,15 @@ backend/
 │   ├── controllers/     # Request handlers
 │   ├── middleware/      # Auth, validation, error handling
 │   ├── models/          # Database queries
-│   ├── patterns/        # Design patterns (Strategy, Factory)
-│   ├── routes/          # API routes
-│   ├── services/        # Business logic (email, OTP, activities)
+│   ├── services/        # Business logic (email, notifications)
 │   ├── types/           # TypeScript type definitions
 │   ├── utils/           # JWT and validation utilities
 │   └── server.ts        # Entry point
-├── database-schema.sql  # PostgreSQL schema
+├── migrations/          # Database migration files
+│   ├── database-schema.sql
+│   ├── 002_add_user_online_tracking.sql
+│   └── README.md
+├── .env.example        # Environment variables template
 └── package.json
 ```
 
@@ -113,46 +137,63 @@ backend/
 - `ticket-moved` - Receive ticket move
 - `ticket-deleted` - Receive ticket deletion
 
-## 🎨 Design Patterns
+## 🎨 Architecture Patterns
 
-### Strategy Pattern - Notification Service
-Different notification strategies (Email, Socket) can be swapped at runtime:
+### Hybrid Notification System
+Combines Socket.io for online users and SendGrid email for offline users:
 ```typescript
-const emailStrategy = new EmailNotificationStrategy();
-const socketStrategy = new SocketNotificationStrategy(io);
-const notificationService = new NotificationService(emailStrategy);
+// Online users get real-time Socket.io notifications
+io.to(`user-${userId}`).emit('notification', notificationData);
+
+// Offline users get rich HTML email notifications
+await sendRichNotificationEmail(user.email, notificationData);
 ```
 
-### Factory Pattern - Ticket Creation
-Creates tickets with type-specific defaults:
+### User Presence Tracking
+Tracks user online/offline status with automatic detection:
 ```typescript
-const ticket = TicketFactory.createTicket(TicketType.BUG, ticketData);
-// Bugs automatically get HIGH priority
+// Set user online on connection
+setUserOnlineStatus(userId, true);
+
+// Set user offline on disconnect
+setUserOnlineStatus(userId, false);
+
+// Check if user is offline (2-minute threshold)
+const isOffline = await isUserOffline(userId);
 ```
 
 ## 📧 Email Configuration
 
-### Gmail Setup
-1. Enable 2-Factor Authentication
-2. Generate App Password: Google Account → Security → App passwords
-3. Use the 16-character password in `.env`
+### SendGrid Setup
+1. Create a SendGrid account
+2. Verify your sender email address
+3. Generate an API key
+4. Add the API key to your `.env` file
 
-### Other Providers
-Update SMTP settings in `.env` for SendGrid, Mailgun, etc.
+### Email Features
+- **Rich HTML Templates**: Professional email notifications
+- **Responsive Design**: Works on all email clients
+- **Branded Notifications**: Consistent with your application
+- **Offline User Support**: Emails sent to users who are offline
 
 ## 🚢 Deployment
 
-### Railway (Recommended)
-1. Connect GitHub repository
-2. Add PostgreSQL service
-3. Set environment variables
+### Render (Current Deployment)
+1. Create Web Service on Render
+2. Connect GitHub repository
+3. Configure environment variables
 4. Deploy automatically
 
-### Render
-1. Create Web Service
-2. Add PostgreSQL database
-3. Configure environment
-4. Deploy
+### Environment Variables for Production
+```env
+DATABASE_URL=your-production-database-url
+SENDGRID_API_KEY=your-sendgrid-api-key
+SENDGRID_FROM_EMAIL=your-verified-email
+JWT_SECRET=your-production-jwt-secret
+SUPER_USER_PASSWORD=your-production-super-user-password
+SOCKET_CORS_ORIGIN=https://your-frontend-domain.com
+CLIENT_URL=https://your-frontend-domain.com
+```
 
 ## 📝 Scripts
 
@@ -164,26 +205,31 @@ Update SMTP settings in `.env` for SendGrid, Mailgun, etc.
 
 - JWT tokens expire in 7 days (configurable)
 - OTPs expire in 10 minutes
-- Passwords should be hashed in production
+- Super user password is hashed and verified
 - Use HTTPS in production
 - Keep `.env` file secure
+- CORS properly configured for frontend domain
 
 ## 🐛 Troubleshooting
 
 **Database Connection Error**
 - Verify DATABASE_URL is correct
 - Check Supabase IP allowlist (allow all or your IP)
+- Ensure database migrations are run
 
 **Email Not Sending**
-- Verify SMTP credentials
-- Check Gmail App Password is correct
-- Ensure 2FA is enabled for Gmail
+- Verify SENDGRID_API_KEY is correct
+- Check SENDGRID_FROM_EMAIL is verified
+- Ensure SendGrid account is active
 
 **Socket.io Connection Failed**
 - Verify SOCKET_CORS_ORIGIN matches frontend URL
 - Check firewall settings
+- Ensure WebSocket connections are allowed
 
-## 📄 License
+**User Offline Detection Not Working**
+- Check database has `last_seen` and `is_online` columns
+- Verify migration `002_add_user_online_tracking.sql` was run
+- Check offline threshold (default: 2 minutes)
 
-MIT
 
