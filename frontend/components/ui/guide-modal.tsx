@@ -108,15 +108,15 @@ export function GuideModal({ isOpen, onClose }: GuideModalProps) {
                   </span>
                   <Tooltip 
                     content={
-                      <div className="max-w-xs">
-                        <div className="font-semibold mb-1">How Progress Works:</div>
-                        <div className="text-xs space-y-1">
-                          <div>• <span className="font-medium">50%</span> for visiting all sections</div>
-                          <div>• <span className="font-medium">50%</span> for completing all sections</div>
-                          <div>• <span className="font-medium">100%</span> when both are done</div>
+                      <div className="text-left whitespace-nowrap">
+                        <div className="font-semibold mb-2">How Progress Works:</div>
+                        <div className="space-y-1">
+                          <div className="whitespace-nowrap">• <span className="font-medium">50%</span> for visiting all sections</div>
+                          <div className="whitespace-nowrap">• <span className="font-medium">50%</span> for completing all sections</div>
+                          <div className="whitespace-nowrap">• <span className="font-medium">100%</span> when both are done</div>
                         </div>
                       </div>
-                    } 
+                    }
                     position="bottom"
                   >
                     <div className="w-4 h-4 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center cursor-pointer">

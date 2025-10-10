@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface TooltipProps {
-  content: string;
+  content: string | React.ReactNode;
   children: React.ReactNode;
   position?: "top" | "bottom" | "left" | "right";
   delay?: number;
@@ -41,7 +41,7 @@ export const Tooltip = ({
             transition={{ duration: 0.15, delay: delay / 1000 }}
             className={`absolute z-50 ${positionClasses[position]}`}
           >
-            <div className="px-2 py-1 text-xs font-medium text-white bg-gray-900 dark:bg-gray-700 rounded-md shadow-lg whitespace-nowrap">
+            <div className={`px-3 py-2 text-xs font-medium text-white bg-gray-900 dark:bg-gray-700 rounded-md shadow-lg ${typeof content === 'string' ? 'whitespace-nowrap' : 'whitespace-normal min-w-max max-w-sm'}`}>
               {content}
               {/* Arrow */}
               <div
