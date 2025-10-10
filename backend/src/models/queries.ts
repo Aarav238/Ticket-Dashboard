@@ -349,11 +349,21 @@ export const updateTicket = async (
   }
 
   values.push(ticketId);
+  
+  // Update ticket and return with user info
   const query = `
-    UPDATE tickets
-    SET ${updateFields.join(', ')}
-    WHERE id = $${paramCount}
-    RETURNING *
+    WITH updated_ticket AS (
+      UPDATE tickets
+      SET ${updateFields.join(', ')}
+      WHERE id = $${paramCount}
+      RETURNING *
+    )
+    SELECT t.*, 
+           u_created.email as creator_email, u_created.name as creator_name,
+           u_assigned.email as assignee_email, u_assigned.name as assignee_name
+    FROM updated_ticket t
+    LEFT JOIN users u_created ON t.created_by = u_created.id
+    LEFT JOIN users u_assigned ON t.assigned_to = u_assigned.id
   `;
 
   const result = await pool.query(query, values);

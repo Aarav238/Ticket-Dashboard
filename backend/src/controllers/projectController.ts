@@ -37,12 +37,15 @@ export const createProject = async (req: Request, res: Response): Promise<void> 
     if (io) {
       io.emit('project-created', project);
       
-      // Send notifications to all users (Socket.io for online, Email for offline)
+      // Send rich notifications to all users
       await notifyAllUsers(io, userId, {
         type: 'PROJECT_CREATED',
         title: 'New Project Created',
-        description: `Project created: ${name}`,
+        description: `A new project has been created`,
         project_id: project.id,
+        actionBy: req.user!.email,
+        projectName: name,
+        additionalDetails: description || 'No description provided',
       });
     }
 
@@ -140,7 +143,7 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
       `Project "${name}" updated`
     );
 
-    // Send notifications to all users (Socket.io for online, Email for offline)
+    // Send rich notifications to all users
     const io = req.app.get('io');
     if (io) {
       io.emit('project-updated', project);
@@ -148,8 +151,11 @@ export const updateProject = async (req: Request, res: Response): Promise<void> 
       await notifyAllUsers(io, userId, {
         type: 'PROJECT_UPDATED',
         title: 'Project Updated',
-        description: `Project updated: ${name}`,
+        description: `Project details have been updated`,
         project_id: project.id,
+        actionBy: req.user!.email,
+        projectName: name,
+        additionalDetails: description || 'No description provided',
       });
     }
 
@@ -205,7 +211,7 @@ export const deleteProject = async (req: Request, res: Response): Promise<void> 
       `Project "${project.name}" deleted`
     );
 
-    // Send notifications to all users (Socket.io for online, Email for offline)
+    // Send rich notifications to all users
     const io = req.app.get('io');
     if (io) {
       io.emit('project-deleted', { id });
@@ -213,8 +219,11 @@ export const deleteProject = async (req: Request, res: Response): Promise<void> 
       await notifyAllUsers(io, userId, {
         type: 'PROJECT_DELETED',
         title: 'Project Deleted',
-        description: `Project deleted: ${project.name}`,
+        description: `A project has been permanently deleted`,
         project_id: project.id,
+        actionBy: req.user!.email,
+        projectName: project.name,
+        additionalDetails: 'All tickets and data associated with this project have been removed',
       });
     }
 

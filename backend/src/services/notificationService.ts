@@ -1,10 +1,10 @@
 // Unified notification service for sending Socket.io and Email notifications
 import { Server as SocketServer } from 'socket.io';
 import { getAllUsersExcept, isUserOffline } from '../models/queries';
-import { sendNotificationEmail } from './emailService';
+import { sendNotificationEmail, sendRichNotificationEmail, RichNotificationData } from './emailService';
 
 /**
- * Notification data structure
+ * Notification data structure (for Socket.io)
  */
 export interface NotificationData {
   type: string;
@@ -12,6 +12,15 @@ export interface NotificationData {
   description: string;
   project_id?: string;
   ticket_id?: string;
+  // Rich details for enhanced notifications
+  actionBy?: string;
+  projectName?: string;
+  ticketTitle?: string;
+  ticketStatus?: string;
+  ticketPriority?: string;
+  ticketType?: string;
+  assignedTo?: string;
+  additionalDetails?: string;
 }
 
 /**
@@ -49,13 +58,23 @@ export const notifyAllUsers = async (
       try {
         // Check if user is currently connected via Socket.io
         if (connectedUserIds.has(user.id)) {
-          // User is ONLINE → Send Socket.io notification
+          // User is ONLINE → Send Socket.io notification with rich details
           io.to(`user-${user.id}`).emit('notification', {
             id: `notif-${Date.now()}-${user.id}`,
             type: notification.type,
+            title: notification.title,
             description: notification.description,
             project_id: notification.project_id,
             ticket_id: notification.ticket_id,
+            // Rich details
+            actionBy: notification.actionBy,
+            projectName: notification.projectName,
+            ticketTitle: notification.ticketTitle,
+            ticketStatus: notification.ticketStatus,
+            ticketPriority: notification.ticketPriority,
+            ticketType: notification.ticketType,
+            assignedTo: notification.assignedTo,
+            additionalDetails: notification.additionalDetails,
             created_at: new Date().toISOString(),
             read: false,
           });
@@ -66,12 +85,25 @@ export const notifyAllUsers = async (
           const offline = await isUserOffline(user.id);
           
           if (offline) {
-            // User is OFFLINE → Send Email notification
-            await sendNotificationEmail(
-              user.email,
-              `Ticket Dashboard - ${notification.title}`,
-              notification.description
-            );
+            // User is OFFLINE → Send Rich Email notification
+            const richData: RichNotificationData = {
+              type: notification.type,
+              title: notification.title,
+              description: notification.description,
+              actionBy: notification.actionBy,
+              projectName: notification.projectName,
+              ticketTitle: notification.ticketTitle,
+              ticketStatus: notification.ticketStatus,
+              ticketPriority: notification.ticketPriority,
+              ticketType: notification.ticketType,
+              assignedTo: notification.assignedTo,
+              additionalDetails: notification.additionalDetails,
+              actionUrl: process.env.CLIENT_URL 
+                ? `${process.env.CLIENT_URL}/projects/${notification.project_id}` 
+                : undefined,
+            };
+            
+            await sendRichNotificationEmail(user.email, richData);
             emailNotifications++;
             console.log(`  📧 Email → ${user.email}`);
           } else {

@@ -61,13 +61,25 @@ export const createTicket = async (req: Request, res: Response): Promise<void> =
       // Emit to project room for real-time board updates
       io.to(`project:${ticket.project_id}`).emit('ticket-created', ticket);
       
-      // Send notifications to all users (Socket.io for online, Email for offline)
+      // Get project name for notification
+      const { getProjectById } = require('../models/queries');
+      const project = await getProjectById(ticket.project_id);
+      
+      // Send rich notifications to all users
       await notifyAllUsers(io, userId, {
         type: 'TICKET_CREATED',
         title: 'New Ticket Created',
-        description: `Ticket created: ${ticket.title}`,
+        description: `A new ticket has been added to the project`,
         project_id: ticket.project_id,
         ticket_id: ticket.id,
+        actionBy: req.user!.email,
+        projectName: project?.name || 'Unknown Project',
+        ticketTitle: ticket.title,
+        ticketStatus: ticket.status,
+        ticketPriority: ticket.priority,
+        ticketType: ticket.type,
+        assignedTo: ticket.assignee_email || 'Unassigned',
+        additionalDetails: ticket.description || 'No description provided',
       });
     }
 
@@ -174,13 +186,25 @@ export const updateTicket = async (req: Request, res: Response): Promise<void> =
       // Emit to project room for real-time board updates
       io.to(`project:${ticket.project_id}`).emit('ticket-updated', ticket);
       
-      // Send notifications to all users (Socket.io for online, Email for offline)
+      // Get project name for notification
+      const { getProjectById } = require('../models/queries');
+      const project = await getProjectById(ticket.project_id);
+      
+      // Send rich notifications to all users
       await notifyAllUsers(io, userId, {
         type: 'TICKET_UPDATED',
         title: 'Ticket Updated',
-        description: `Ticket updated: ${ticket.title}`,
+        description: `Ticket details have been modified`,
         project_id: ticket.project_id,
         ticket_id: ticket.id,
+        actionBy: req.user!.email,
+        projectName: project?.name || 'Unknown Project',
+        ticketTitle: ticket.title,
+        ticketStatus: ticket.status,
+        ticketPriority: ticket.priority,
+        ticketType: ticket.type,
+        assignedTo: ticket.assignee_email || 'Unassigned',
+        additionalDetails: ticket.description || 'No description provided',
       });
     }
 
@@ -252,13 +276,24 @@ export const moveTicket = async (req: Request, res: Response): Promise<void> => 
       // Emit to project room for real-time board updates
       io.to(`project:${ticket.project_id}`).emit('ticket-moved', ticket);
       
-      // Send notifications to all users (Socket.io for online, Email for offline)
+      // Get project name for notification
+      const { getProjectById } = require('../models/queries');
+      const project = await getProjectById(ticket.project_id);
+      
+      // Send rich notifications to all users
       await notifyAllUsers(io, userId, {
         type: 'TICKET_MOVED',
-        title: 'Ticket Moved',
+        title: 'Ticket Status Changed',
         description: activityDescription,
         project_id: ticket.project_id,
         ticket_id: ticket.id,
+        actionBy: req.user!.email,
+        projectName: project?.name || 'Unknown Project',
+        ticketTitle: ticket.title,
+        ticketStatus: status,
+        ticketPriority: ticket.priority,
+        ticketType: ticket.type,
+        assignedTo: ticket.assignee_email || 'Unassigned',
       });
     }
 
@@ -321,13 +356,24 @@ export const deleteTicket = async (req: Request, res: Response): Promise<void> =
       // Emit to project room for real-time board updates
       io.to(`project:${ticket.project_id}`).emit('ticket-deleted', { id: ticket.id });
       
-      // Send notifications to all users (Socket.io for online, Email for offline)
+      // Get project name for notification
+      const { getProjectById } = require('../models/queries');
+      const project = await getProjectById(ticket.project_id);
+      
+      // Send rich notifications to all users
       await notifyAllUsers(io, userId, {
         type: 'TICKET_DELETED',
         title: 'Ticket Deleted',
-        description: `Ticket deleted: ${ticket.title}`,
+        description: `A ticket has been permanently removed`,
         project_id: ticket.project_id,
         ticket_id: ticket.id,
+        actionBy: req.user!.email,
+        projectName: project?.name || 'Unknown Project',
+        ticketTitle: ticket.title,
+        ticketStatus: ticket.status,
+        ticketPriority: ticket.priority,
+        ticketType: ticket.type,
+        additionalDetails: 'This ticket and all its data have been deleted',
       });
     }
 

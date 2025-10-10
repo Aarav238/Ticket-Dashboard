@@ -49,6 +49,11 @@ export interface Ticket {
   created_at: Date;
   updated_at: Date;
   order_index: number;
+  // Extended fields from JOIN queries
+  assignee_email?: string;
+  assignee_name?: string;
+  creator_email?: string;
+  creator_name?: string;
 }
 
 export enum ActivityType {
