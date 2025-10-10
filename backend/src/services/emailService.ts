@@ -1,22 +1,20 @@
-// Email service using Nodemailer for sending OTP and notifications
-import nodemailer from 'nodemailer';
+// Email service using SendGrid for sending OTP and notifications
+import sgMail from '@sendgrid/mail';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 /**
- * Create reusable transporter for sending emails
- * Configured using environment variables
+ * Initialize SendGrid client with API key
+ * API key should be set in SENDGRID_API_KEY environment variable
  */
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
-  },
-});
+sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
+
+/**
+ * Default sender email address
+ * Must be a verified sender in SendGrid
+ */
+const DEFAULT_FROM = process.env.SENDGRID_FROM_EMAIL || 'noreply@example.com';
 
 /**
  * Sends OTP email to user for authentication
@@ -26,9 +24,9 @@ const transporter = nodemailer.createTransport({
  */
 export const sendOTPEmail = async (email: string, otp: string): Promise<boolean> => {
   try {
-    const mailOptions = {
-      from: process.env.SMTP_FROM || '"Ticket Dashboard" <noreply@ticketdashboard.com>',
+    const msg = {
       to: email,
+      from: DEFAULT_FROM,
       subject: 'Your Login OTP - Ticket Dashboard',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -46,11 +44,14 @@ export const sendOTPEmail = async (email: string, otp: string): Promise<boolean>
       text: `Your OTP for Ticket Dashboard login is: ${otp}. This OTP will expire in 10 minutes.`,
     };
 
-    await transporter.sendMail(mailOptions);
+    await sgMail.send(msg);
     console.log(`✅ OTP email sent to ${email}`);
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error sending OTP email:', error);
+    if (error.response) {
+      console.error('SendGrid Error Details:', error.response.body);
+    }
     return false;
   }
 };
@@ -86,9 +87,9 @@ export const sendNotificationEmail = async (
   message: string
 ): Promise<boolean> => {
   try {
-    const mailOptions = {
-      from: process.env.SMTP_FROM || '"Ticket Dashboard" <noreply@ticketdashboard.com>',
+    const msg = {
       to: email,
+      from: DEFAULT_FROM,
       subject: subject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -103,11 +104,14 @@ export const sendNotificationEmail = async (
       text: message,
     };
 
-    await transporter.sendMail(mailOptions);
+    await sgMail.send(msg);
     console.log(`✅ Notification email sent to ${email}`);
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error sending notification email:', error);
+    if (error.response) {
+      console.error('SendGrid Error Details:', error.response.body);
+    }
     return false;
   }
 };
@@ -151,9 +155,9 @@ export const sendRichNotificationEmail = async (
     const priorityColor = data.ticketPriority ? priorityColors[data.ticketPriority] || '#6B7280' : null;
     const statusColor = data.ticketStatus ? statusColors[data.ticketStatus] || '#6B7280' : null;
 
-    const mailOptions = {
-      from: process.env.SMTP_FROM || '"Ticket Dashboard" <noreply@ticketdashboard.com>',
+    const msg = {
       to: email,
+      from: DEFAULT_FROM,
       subject: `Ticket Dashboard - ${data.title}`,
       html: `
         <!DOCTYPE html>
@@ -320,11 +324,14 @@ Ticket Dashboard - Your Project Management Solution
       `.trim(),
     };
 
-    await transporter.sendMail(mailOptions);
+    await sgMail.send(msg);
     console.log(`✅ Rich notification email sent to ${email}`);
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error sending rich notification email:', error);
+    if (error.response) {
+      console.error('SendGrid Error Details:', error.response.body);
+    }
     return false;
   }
 };
