@@ -1,6 +1,6 @@
 # Ticket Dashboard
 
-A modern, full-stack ticket management system built with Next.js 15, TypeScript, and PostgreSQL. Features real-time updates, drag-and-drop Kanban boards, and comprehensive project management capabilities.
+A modern, full-stack ticket management system built with Next.js 15, TypeScript, and MongoDB. Features real-time updates, drag-and-drop Kanban boards, and comprehensive project management capabilities.
 
 ## ✨ Features
 
@@ -67,9 +67,9 @@ The application follows a **layered architecture** with clear separation of conc
 │  │  Models (Database Queries)          │   │
 │  └─────────────────────────────────────┘   │
 └──────────────┬──────────────────────────────┘
-               │ SQL Queries
+               │ Mongoose ODM
 ┌──────────────┴──────────────────────────────┐
-│      Database (PostgreSQL/Supabase)         │
+│           Database (MongoDB)                │
 └─────────────────────────────────────────────┘
 ```
 
@@ -205,17 +205,15 @@ export const updateLastSeen = async (req: Request, res: Response, next: NextFunc
 **Implementation**:
 ```typescript
 // All database queries centralized in one place
-export const getUserByEmail = async (email: string): Promise<User | null> => {
-  const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-  return result.rows[0] || null;
+export const findUserByEmail = async (email: string): Promise<User | null> => {
+  const doc = await UserModel.findOne({ email });
+  return formatUser(doc);
 };
 
-export const createProject = async (data: CreateProjectDTO): Promise<Project> => {
-  const result = await pool.query(
-    'INSERT INTO projects (name, description, created_by) VALUES ($1, $2, $3) RETURNING *',
-    [data.name, data.description, data.created_by]
-  );
-  return result.rows[0];
+export const createProject = async (name: string, createdBy: string, description?: string): Promise<Project> => {
+  const doc = await ProjectModel.create({ name, description, created_by: createdBy });
+  const populated = await doc.populate('created_by', 'email name');
+  return formatProject(populated)!;
 };
 ```
 
@@ -255,16 +253,18 @@ socket.on('notification', (data) => {
 #### 6️⃣ **Singleton Pattern** (Database Connection)
 **Location**: `backend/src/config/database.ts`
 
-**Purpose**: Single database connection pool instance
+**Purpose**: Single Mongoose connection instance shared across the app
 
 **Implementation**:
 ```typescript
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+// Single mongoose connection — reused across all imports
+const MONGODB_URI = process.env.MONGODB_URL || 'mongodb://localhost:27017';
 
-export default pool; // Single instance exported
+export const connectDB = async (): Promise<void> => {
+  await mongoose.connect(MONGODB_URI, { dbName: 'ticket-dashboard' });
+};
+
+export default mongoose; // Single instance exported
 ```
 
 **Benefits**:
@@ -302,7 +302,7 @@ export default pool; // Single instance exported
 ### Backend Stack
 - **Node.js** with Express.js
 - **TypeScript** for type safety
-- **PostgreSQL** database with Supabase
+- **MongoDB** with Mongoose ODM
 - **Socket.io** for real-time communication
 - **SendGrid** for email services
 - **JWT** for authentication
@@ -325,11 +325,10 @@ Ticket-dashboard/
 │   ├── src/
 │   │   ├── controllers/    # Route controllers
 │   │   ├── middleware/     # Express middleware
-│   │   ├── models/         # Database queries
+│   │   ├── models/         # Mongoose models & queries
 │   │   ├── services/       # Business logic
 │   │   ├── types/          # TypeScript types
 │   │   └── utils/          # Utility functions
-│   ├── migrations/         # Database migrations
 │   └── package.json
 ├── frontend/               # Next.js frontend
 │   ├── app/               # App Router pages
@@ -343,8 +342,8 @@ Ticket-dashboard/
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
-- PostgreSQL database (Supabase recommended)
+- Node.js 18+
+- MongoDB (local via [MongoDB Compass](https://www.mongodb.com/products/compass) or cloud via [MongoDB Atlas](https://www.mongodb.com/atlas))
 - SendGrid account for email services
 
 ### 1. Clone the Repository
@@ -365,11 +364,12 @@ Create `.env` file:
 PORT=5000
 NODE_ENV=development
 
-# Database
-DATABASE_URL=your_supabase_connection_string
+# Database (optional — defaults to mongodb://localhost:27017)
+# MONGODB_URL=mongodb://localhost:27017
+# MONGODB_URL=mongodb+srv://user:password@cluster.mongodb.net  ← Atlas
 
 # JWT
-JWT_SECRET=your_jwt_secret
+JWT_SECRET=your_jwt_secret_min_32_chars
 JWT_EXPIRES_IN=7d
 
 # Email Service
@@ -406,38 +406,69 @@ npm run dev
 ```
 
 ### 4. Database Setup
-1. Create a Supabase project
-2. Run the SQL migrations in `backend/migrations/`
-3. Update your `DATABASE_URL` in backend `.env`
+**Local (MongoDB Compass)**
+1. Install and open [MongoDB Compass](https://www.mongodb.com/products/compass)
+2. Connect to `mongodb://localhost:27017`
+3. The `ticket-dashboard` database is created automatically on first run
 
-## 🗄️ Database Schema
+**Cloud (MongoDB Atlas)**
+1. Create a free cluster at [mongodb.com/atlas](https://www.mongodb.com/atlas)
+2. Copy the connection string and set `MONGODB_URL` in backend `.env`
 
-### Users Table
-- `id` (UUID, Primary Key)
-- `email` (VARCHAR, Unique)
-- `name` (VARCHAR)
-- `last_seen` (TIMESTAMP)
-- `is_online` (BOOLEAN)
+## 🗄️ Database Schema (MongoDB Collections)
 
-### Projects Table
-- `id` (UUID, Primary Key)
-- `name` (VARCHAR)
-- `description` (TEXT)
-- `created_by` (UUID, Foreign Key)
-- `created_at` (TIMESTAMP)
-- `updated_at` (TIMESTAMP)
+### users
+| Field | Type | Notes |
+|-------|------|-------|
+| `_id` | ObjectId | Auto-generated |
+| `email` | String | Unique, indexed |
+| `name` | String | Optional |
+| `is_online` | Boolean | Default: false |
+| `last_seen` | Date | Updated on each request |
+| `created_at` | Date | Auto (timestamps) |
+| `updated_at` | Date | Auto (timestamps) |
 
-### Tickets Table
-- `id` (UUID, Primary Key)
-- `project_id` (UUID, Foreign Key)
-- `title` (VARCHAR)
-- `description` (TEXT)
-- `status` (ENUM: TODO, IN_PROGRESS, DONE)
-- `priority` (ENUM: LOW, MEDIUM, HIGH, URGENT)
-- `type` (ENUM: BUG, FEATURE, TASK)
-- `assigned_to` (UUID, Foreign Key)
-- `created_by` (UUID, Foreign Key)
-- `order_index` (INTEGER)
+### projects
+| Field | Type | Notes |
+|-------|------|-------|
+| `_id` | ObjectId | Auto-generated |
+| `name` | String | Required |
+| `description` | String | Optional |
+| `created_by` | ObjectId | Ref: User |
+| `created_at` | Date | Auto (timestamps) |
+| `updated_at` | Date | Auto (timestamps) |
+
+### tickets
+| Field | Type | Notes |
+|-------|------|-------|
+| `_id` | ObjectId | Auto-generated |
+| `project_id` | ObjectId | Ref: Project |
+| `title` | String | Required |
+| `description` | String | Optional |
+| `status` | String | TODO / IN_PROGRESS / DONE |
+| `priority` | String | LOW / MEDIUM / HIGH / URGENT |
+| `type` | String | BUG / FEATURE / TASK / IMPROVEMENT |
+| `assigned_to` | ObjectId | Ref: User (optional) |
+| `created_by` | ObjectId | Ref: User |
+| `order_index` | Number | For drag-and-drop ordering |
+
+### activities
+| Field | Type | Notes |
+|-------|------|-------|
+| `_id` | ObjectId | Auto-generated |
+| `project_id` | ObjectId | Ref: Project |
+| `ticket_id` | ObjectId | Ref: Ticket (optional) |
+| `user_id` | ObjectId | Ref: User |
+| `type` | String | Action type enum |
+| `description` | String | Human-readable log |
+
+### otps
+| Field | Type | Notes |
+|-------|------|-------|
+| `_id` | ObjectId | Auto-generated |
+| `email` | String | Target email |
+| `otp` | String | 6-digit code |
+| `expires_at` | Date | TTL index — auto-deleted by MongoDB |
 
 ## 🔧 API Endpoints
 
@@ -627,72 +658,28 @@ if (isOffline) {
 
 ## 🗄️ Database Architecture
 
-### Why PostgreSQL Over NoSQL?
+### Why MongoDB?
 
-#### **✅ Advantages of PostgreSQL (Our Choice)**
+1. **Flexible Schema**: Documents map naturally to JSON API responses — no SQL→object mapping needed
+2. **Embedded Populate**: Mongoose `populate()` handles joins efficiently without complex SQL
+3. **TTL Indexes**: OTP documents are auto-deleted by MongoDB when they expire — no cron job needed
+4. **Easy Setup**: No migration scripts — collections and indexes are created automatically on first run
+5. **Atlas Ready**: Seamlessly scales from local Compass to MongoDB Atlas in production by changing one env variable
 
-1. **ACID Compliance**: Ensures data integrity for critical operations
-   - Project updates are atomic
-   - Ticket assignments are consistent
-   - No partial updates or data corruption
+### Mongoose Model Benefits
 
-2. **Relational Data**: Perfect for our structured data model
-   - Users → Projects → Tickets relationships
-   - Foreign key constraints prevent orphaned data
-   - Complex queries with JOINs are efficient
+```typescript
+// Relationships via ObjectId refs + populate()
+const ticket = await TicketModel.findById(id)
+  .populate('created_by', 'email name')
+  .populate('assigned_to', 'email name');
 
-3. **Advanced Querying**: SQL provides powerful data operations
-   - Complex filtering and sorting
-   - Aggregations (count tickets per project, user activity)
-   - Full-text search capabilities
+// TTL index — MongoDB auto-deletes expired OTPs
+otpSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
 
-4. **Data Validation**: Schema enforcement at database level
-   - ENUM types for ticket status/priority
-   - NOT NULL constraints
-   - Data type validation
-
-5. **Mature Ecosystem**: Proven reliability and tooling
-   - Supabase provides excellent PostgreSQL hosting
-   - Rich migration tools
-   - Backup and recovery solutions
-
-#### **❌ Why Not NoSQL (MongoDB, etc.)?**
-
-1. **Data Structure**: Our data is naturally relational
-   - Projects contain multiple tickets
-   - Users are assigned to tickets
-   - Complex relationships would require manual management
-
-2. **Consistency Requirements**: Ticket management needs strong consistency
-   - Can't have tickets without projects
-   - User assignments must be valid
-   - Status updates must be atomic
-
-3. **Query Complexity**: We need complex queries
-   - "Get all tickets for user across all projects"
-   - "Find projects with overdue tickets"
-   - "Generate user activity reports"
-
-4. **Transaction Requirements**: Multi-table operations
-   - Creating a ticket updates project statistics
-   - User actions affect multiple entities
-   - Need rollback capabilities
-
-### Database Schema Benefits
-
-```sql
--- Strong relationships with foreign keys
-CREATE TABLE tickets (
-  id UUID PRIMARY KEY,
-  project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
-  assigned_to UUID REFERENCES users(id),
-  created_by UUID REFERENCES users(id),
-  -- ... other fields
-);
-
--- Data integrity with ENUMs
-CREATE TYPE ticket_status AS ENUM ('TODO', 'IN_PROGRESS', 'DONE');
-CREATE TYPE ticket_priority AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'URGENT');
+// Cascade delete handled in application layer
+await TicketModel.deleteMany({ project_id: projectId });
+await ActivityModel.deleteMany({ project_id: projectId });
 ```
 
 ## 📚 Interactive Guide System
@@ -802,8 +789,11 @@ npm test
 ```env
 PORT=5000
 NODE_ENV=development
-DATABASE_URL=postgresql://...
-JWT_SECRET=your_secret
+
+# Optional — defaults to mongodb://localhost:27017
+MONGODB_URL=mongodb://localhost:27017
+
+JWT_SECRET=your_secret_min_32_chars
 JWT_EXPIRES_IN=7d
 SENDGRID_API_KEY=your_key
 SENDGRID_FROM_EMAIL=your_email

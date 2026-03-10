@@ -1,6 +1,6 @@
 # Ticket Dashboard Backend
 
-A robust Node.js backend with Express, TypeScript, Socket.io, and PostgreSQL for real-time project and ticket management.
+A robust Node.js backend with Express, TypeScript, Socket.io, and MongoDB for real-time project and ticket management.
 
 ## 🌐 Live Deployment
 - **Backend API**: [https://ticket-dashboard-7ujo.onrender.com](https://ticket-dashboard-7ujo.onrender.com) (Render)
@@ -19,8 +19,8 @@ A robust Node.js backend with Express, TypeScript, Socket.io, and PostgreSQL for
 
 ## 📋 Prerequisites
 
-- Node.js 18+ 
-- PostgreSQL (Supabase recommended)
+- Node.js 18+
+- MongoDB (local via [MongoDB Compass](https://www.mongodb.com/products/compass) or cloud via [MongoDB Atlas](https://www.mongodb.com/atlas))
 - SendGrid account for email services
 
 ## 🛠️ Installation
@@ -32,35 +32,42 @@ A robust Node.js backend with Express, TypeScript, Socket.io, and PostgreSQL for
    ```
 
 2. **Setup Database**
-   - Create a PostgreSQL database in Supabase
-   - Run the SQL migrations from `migrations/` folder in Supabase SQL Editor
-   - Copy your connection string
+
+   **Local (MongoDB Compass)**
+   - Install and open MongoDB Compass
+   - Connect to `mongodb://localhost:27017`
+   - The `ticket-dashboard` database is created automatically on first run — no migrations needed
+
+   **Cloud (MongoDB Atlas)**
+   - Create a free cluster at [mongodb.com/atlas](https://www.mongodb.com/atlas)
+   - Copy the connection string and set `MONGODB_URL` in `.env`
 
 3. **Configure Environment**
    ```bash
-   cp .env.example .env
+   cp .env .env.backup
    ```
-   
+
    Edit `.env` with your credentials:
    ```env
    # Server Configuration
    PORT=5000
    NODE_ENV=development
-   
-   # Database
-   DATABASE_URL=your-supabase-connection-string
-   
+
+   # Database (optional — defaults to mongodb://localhost:27017)
+   # MONGODB_URL=mongodb://localhost:27017
+   # MONGODB_URL=mongodb+srv://user:password@cluster.mongodb.net  ← Atlas
+
    # JWT
    JWT_SECRET=your-secret-min-32-characters
    JWT_EXPIRES_IN=7d
-   
+
    # Email Service (SendGrid)
    SENDGRID_API_KEY=your-sendgrid-api-key
    SENDGRID_FROM_EMAIL=your-verified-email
-   
+
    # Super User
    SUPER_USER_PASSWORD=your-admin-password
-   
+
    # CORS
    SOCKET_CORS_ORIGIN=http://localhost:3000
    CLIENT_URL=http://localhost:3000
@@ -78,19 +85,21 @@ A robust Node.js backend with Express, TypeScript, Socket.io, and PostgreSQL for
 ```
 backend/
 ├── src/
-│   ├── config/          # Database and Socket.io configuration
+│   ├── config/          # Database (MongoDB) and Socket.io configuration
 │   ├── controllers/     # Request handlers
 │   ├── middleware/      # Auth, validation, error handling
-│   ├── models/          # Database queries
-│   ├── services/        # Business logic (email, notifications)
+│   ├── models/          # Mongoose models & query functions
+│   │   ├── UserModel.ts
+│   │   ├── ProjectModel.ts
+│   │   ├── TicketModel.ts
+│   │   ├── ActivityModel.ts
+│   │   ├── OTPModel.ts
+│   │   └── queries.ts
+│   ├── services/        # Business logic (email, notifications, OTP, activity)
 │   ├── types/           # TypeScript type definitions
 │   ├── utils/           # JWT and validation utilities
 │   └── server.ts        # Entry point
-├── migrations/          # Database migration files
-│   ├── database-schema.sql
-│   ├── 002_add_user_online_tracking.sql
-│   └── README.md
-├── .env.example        # Environment variables template
+├── .env                 # Environment variables
 └── package.json
 ```
 
@@ -107,7 +116,7 @@ backend/
 - `GET /api/projects` - Get all projects
 - `GET /api/projects/:id` - Get project by ID
 - `PUT /api/projects/:id` - Update project
-- `DELETE /api/projects/:id` - Delete project
+- `DELETE /api/projects/:id` - Delete project (cascades to tickets & activities)
 
 ### Tickets
 - `POST /api/tickets` - Create ticket
@@ -137,6 +146,16 @@ backend/
 - `ticket-moved` - Receive ticket move
 - `ticket-deleted` - Receive ticket deletion
 
+## 🗄️ MongoDB Collections
+
+| Collection | Description |
+|-----------|-------------|
+| `users` | User accounts with presence tracking (`is_online`, `last_seen`) |
+| `projects` | Projects with creator reference |
+| `tickets` | Tickets with status, priority, type, and user refs |
+| `activities` | Audit log of all changes |
+| `otps` | One-time passwords (TTL-indexed, auto-deleted on expiry) |
+
 ## 🎨 Architecture Patterns
 
 ### Hybrid Notification System
@@ -162,6 +181,12 @@ setUserOnlineStatus(userId, false);
 const isOffline = await isUserOffline(userId);
 ```
 
+### TTL-based OTP Expiry
+MongoDB automatically deletes expired OTP documents via a TTL index:
+```typescript
+otpSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
+```
+
 ## 📧 Email Configuration
 
 ### SendGrid Setup
@@ -169,12 +194,6 @@ const isOffline = await isUserOffline(userId);
 2. Verify your sender email address
 3. Generate an API key
 4. Add the API key to your `.env` file
-
-### Email Features
-- **Rich HTML Templates**: Professional email notifications
-- **Responsive Design**: Works on all email clients
-- **Branded Notifications**: Consistent with your application
-- **Offline User Support**: Emails sent to users who are offline
 
 ## 🚢 Deployment
 
@@ -186,7 +205,7 @@ const isOffline = await isUserOffline(userId);
 
 ### Environment Variables for Production
 ```env
-DATABASE_URL=your-production-database-url
+MONGODB_URL=mongodb+srv://user:password@cluster.mongodb.net
 SENDGRID_API_KEY=your-sendgrid-api-key
 SENDGRID_FROM_EMAIL=your-verified-email
 JWT_SECRET=your-production-jwt-secret
@@ -204,32 +223,27 @@ CLIENT_URL=https://your-frontend-domain.com
 ## 🔐 Security Notes
 
 - JWT tokens expire in 7 days (configurable)
-- OTPs expire in 10 minutes
-- Super user password is hashed and verified
+- OTPs expire in 10 minutes (auto-deleted via MongoDB TTL index)
 - Use HTTPS in production
-- Keep `.env` file secure
+- Keep `.env` file secure and never commit it
 - CORS properly configured for frontend domain
 
 ## 🐛 Troubleshooting
 
-**Database Connection Error**
-- Verify DATABASE_URL is correct
-- Check Supabase IP allowlist (allow all or your IP)
-- Ensure database migrations are run
+**MongoDB Connection Error**
+- Ensure MongoDB is running locally (`mongod` or MongoDB Compass)
+- Verify `MONGODB_URL` is correct if set
+- For Atlas: check network access allowlist and credentials
 
 **Email Not Sending**
-- Verify SENDGRID_API_KEY is correct
-- Check SENDGRID_FROM_EMAIL is verified
+- Verify `SENDGRID_API_KEY` is correct
+- Check `SENDGRID_FROM_EMAIL` is a verified sender in SendGrid
 - Ensure SendGrid account is active
 
 **Socket.io Connection Failed**
-- Verify SOCKET_CORS_ORIGIN matches frontend URL
-- Check firewall settings
-- Ensure WebSocket connections are allowed
+- Verify `SOCKET_CORS_ORIGIN` matches your frontend URL exactly
+- Check firewall settings allow WebSocket connections
 
 **User Offline Detection Not Working**
-- Check database has `last_seen` and `is_online` columns
-- Verify migration `002_add_user_online_tracking.sql` was run
-- Check offline threshold (default: 2 minutes)
-
-
+- Check `is_online` and `last_seen` fields exist in the users collection
+- Offline threshold is 2 minutes of inactivity

@@ -3,7 +3,8 @@ import express, { Application } from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import pool from './config/database';
+import mongoose from 'mongoose';
+import { connectDB } from './config/database';
 import { initializeSocket } from './config/socket';
 import { errorHandler, notFound } from './middleware/errorHandler';
 import { updateLastSeenMiddleware } from './middleware/updateLastSeen';
@@ -69,12 +70,12 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 /**
- * Starts the server and tests database connection
+ * Starts the server after connecting to MongoDB
  */
 const startServer = async () => {
   try {
-    // Test database connection
-    await pool.query('SELECT NOW()');
+    // Connect to MongoDB
+    await connectDB();
     console.log('✅ Database connected successfully');
 
     // Start server
@@ -84,7 +85,7 @@ const startServer = async () => {
 ║   🚀 Ticket Dashboard Backend Server           ║
 ║                                                ║
 ║   📡 Server: http://localhost:${PORT}          ║
-║   🗄️  Database: Connected                      ║
+║   🗄️  Database: MongoDB (ticket-dashboard)     ║
 ║   🔌 Socket.io: Running                        ║
 ║   📧 Email: Configured                         ║
 ║                                                ║
@@ -101,12 +102,11 @@ const startServer = async () => {
 // Handle graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM signal received: closing HTTP server');
-  httpServer.close(() => {
+  httpServer.close(async () => {
     console.log('HTTP server closed');
-    pool.end(() => {
-      console.log('Database pool closed');
-      process.exit(0);
-    });
+    await mongoose.connection.close();
+    console.log('MongoDB connection closed');
+    process.exit(0);
   });
 });
 
@@ -114,4 +114,3 @@ process.on('SIGTERM', () => {
 startServer();
 
 export { app, io };
-

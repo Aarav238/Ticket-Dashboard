@@ -1,16 +1,38 @@
 // Activity service for logging and retrieving project/ticket activities
-import pool from '../config/database';
+import mongoose from 'mongoose';
 import { Activity, ActivityType } from '../types';
+import { ActivityModel } from '../models/ActivityModel';
+
+const formatActivity = (doc: any): Activity | null => {
+  if (!doc) return null;
+  const obj = doc.toObject ? doc.toObject() : { ...doc };
+  const result: any = {
+    id: obj._id.toString(),
+    project_id: obj.project_id?.toString(),
+    ticket_id: obj.ticket_id?.toString(),
+    user_id:
+      obj.user_id && typeof obj.user_id === 'object' && obj.user_id._id
+        ? obj.user_id._id.toString()
+        : obj.user_id?.toString(),
+    type: obj.type,
+    description: obj.description,
+    created_at: obj.created_at,
+  };
+
+  if (obj.user_id && typeof obj.user_id === 'object' && obj.user_id._id) {
+    result.user_email = obj.user_id.email;
+    result.user_name = obj.user_id.name;
+  }
+  if (obj.project_id && typeof obj.project_id === 'object' && obj.project_id._id) {
+    result.project_name = obj.project_id.name;
+    result.project_id = obj.project_id._id.toString();
+  }
+
+  return result;
+};
 
 /**
  * Creates a new activity log entry
- * Used for tracking all changes to tickets and projects
- * @param projectId - Project ID
- * @param userId - User who performed the action
- * @param type - Type of activity
- * @param description - Human-readable description
- * @param ticketId - Optional ticket ID if activity is ticket-related
- * @returns Promise<Activity> - Created activity
  */
 export const createActivity = async (
   projectId: string,
@@ -19,77 +41,56 @@ export const createActivity = async (
   description: string,
   ticketId?: string
 ): Promise<Activity> => {
-  const query = `
-    INSERT INTO activities (project_id, user_id, type, description, ticket_id)
-    VALUES ($1, $2, $3, $4, $5)
-    RETURNING *
-  `;
-
-  const result = await pool.query(query, [projectId, userId, type, description, ticketId]);
-  return result.rows[0];
+  const createData: any = {
+    project_id: new mongoose.Types.ObjectId(projectId),
+    user_id: new mongoose.Types.ObjectId(userId),
+    type,
+    description,
+  };
+  if (ticketId) {
+    createData.ticket_id = new mongoose.Types.ObjectId(ticketId);
+  }
+  const doc = await ActivityModel.create(createData);
+  return formatActivity(doc)!;
 };
 
 /**
  * Retrieves activities for a specific project
- * @param projectId - Project ID
- * @param limit - Maximum number of activities to return
- * @returns Promise<Activity[]> - List of activities
  */
 export const getProjectActivities = async (
   projectId: string,
   limit: number = 50
 ): Promise<Activity[]> => {
-  const query = `
-    SELECT a.*, u.email as user_email, u.name as user_name
-    FROM activities a
-    LEFT JOIN users u ON a.user_id = u.id
-    WHERE a.project_id = $1
-    ORDER BY a.created_at DESC
-    LIMIT $2
-  `;
-
-  const result = await pool.query(query, [projectId, limit]);
-  return result.rows;
+  if (!mongoose.Types.ObjectId.isValid(projectId)) return [];
+  const docs = await ActivityModel.find({ project_id: new mongoose.Types.ObjectId(projectId) })
+    .populate('user_id', 'email name')
+    .sort({ created_at: -1 })
+    .limit(limit);
+  return docs.map(formatActivity).filter(Boolean) as Activity[];
 };
 
 /**
  * Retrieves all activities for a user across all projects
- * @param userId - User ID
- * @param limit - Maximum number of activities to return
- * @returns Promise<Activity[]> - List of activities
  */
 export const getUserActivities = async (
   userId: string,
   limit: number = 50
 ): Promise<Activity[]> => {
-  const query = `
-    SELECT a.*, p.name as project_name
-    FROM activities a
-    LEFT JOIN projects p ON a.project_id = p.id
-    WHERE a.user_id = $1
-    ORDER BY a.created_at DESC
-    LIMIT $2
-  `;
-
-  const result = await pool.query(query, [userId, limit]);
-  return result.rows;
+  if (!mongoose.Types.ObjectId.isValid(userId)) return [];
+  const docs = await ActivityModel.find({ user_id: new mongoose.Types.ObjectId(userId) })
+    .populate('project_id', 'name')
+    .sort({ created_at: -1 })
+    .limit(limit);
+  return docs.map(formatActivity).filter(Boolean) as Activity[];
 };
 
 /**
  * Retrieves activities for a specific ticket
- * @param ticketId - Ticket ID
- * @returns Promise<Activity[]> - List of activities
  */
 export const getTicketActivities = async (ticketId: string): Promise<Activity[]> => {
-  const query = `
-    SELECT a.*, u.email as user_email, u.name as user_name
-    FROM activities a
-    LEFT JOIN users u ON a.user_id = u.id
-    WHERE a.ticket_id = $1
-    ORDER BY a.created_at DESC
-  `;
-
-  const result = await pool.query(query, [ticketId]);
-  return result.rows;
+  if (!mongoose.Types.ObjectId.isValid(ticketId)) return [];
+  const docs = await ActivityModel.find({ ticket_id: new mongoose.Types.ObjectId(ticketId) })
+    .populate('user_id', 'email name')
+    .sort({ created_at: -1 });
+  return docs.map(formatActivity).filter(Boolean) as Activity[];
 };
-
